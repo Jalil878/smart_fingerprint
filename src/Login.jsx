@@ -3,13 +3,18 @@ import { isSupabaseConfigured, supabase } from "./supabaseClient";
 
 function Login({ onSignIn, onShowSignup }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("admin");
+  const [selectedRole, setSelectedRole] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setErrorMessage("");
+
+    if (!selectedRole) {
+      setErrorMessage("Please select a role first.");
+      return;
+    }
 
     if (!isSupabaseConfigured) {
       setErrorMessage("Add your Supabase URL and anon key to .env first.");
@@ -114,12 +119,12 @@ function Login({ onSignIn, onShowSignup }) {
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen animate-fade-in bg-slate-100 text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-5 py-10">
         <section className="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl">
           <div className="p-7 sm:p-9">
-            <div className="mb-8 ">
-              <div className="mb-6 flex items-center gap-4">
+            <div className="mb-8">
+              <div className="mb-6 flex animate-fade-in-up items-center gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-900 text-lg font-bold text-white">
                   SF
                 </div>
@@ -129,14 +134,20 @@ function Login({ onSignIn, onShowSignup }) {
                   className="h-16 w-auto object-contain"
                 />
               </div>
-              <h1 className="text-2xl font-bold leading-tight sm:text-xl">
+              <h1 className="animate-fade-in-up text-2xl font-bold leading-tight sm:text-xl" style={{ animationDelay: '0.1s' }}>
                 Smart Fingerprint: Subject Attendance
               </h1>
-              <h2 className="mt-2 text-xl font-bold text-slate-950">Sign in</h2>
+              <h2 className="mt-2 animate-fade-in-up text-xl font-bold text-slate-950" style={{ animationDelay: '0.15s' }}>Sign in</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-3 gap-2">
+              {errorMessage && (
+                <p className="rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+                  {errorMessage}
+                </p>
+              )}
+
+              <div className="animate-stagger grid grid-cols-3 gap-2">
                 {["admin", "faculty", "student"].map((role) => (
                   <button
                     key={role}
@@ -153,7 +164,7 @@ function Login({ onSignIn, onShowSignup }) {
                 ))}
               </div>
 
-              <div>
+              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.25s both' }}>
                 <label
                   htmlFor="email"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -171,7 +182,7 @@ function Login({ onSignIn, onShowSignup }) {
                 />
               </div>
 
-              <div>
+              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.35s both' }}>
                 <label
                   htmlFor="password"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -198,7 +209,7 @@ function Login({ onSignIn, onShowSignup }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4 text-sm">
+              <div className="flex items-center justify-between gap-4 text-sm" style={{ animation: 'fade-in-up 0.5s ease-out 0.45s both' }}>
                 <label className="flex items-center gap-2 text-slate-600">
                   <input
                     type="checkbox"
@@ -214,22 +225,17 @@ function Login({ onSignIn, onShowSignup }) {
                 </button>
               </div>
 
-              {errorMessage && (
-                <p className="rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
-                  {errorMessage}
-                </p>
-              )}
-
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+                style={{ animation: 'fade-in-up 0.5s ease-out 0.55s both' }}
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-slate-600">
+            <p className="mt-6 animate-fade-in-up text-center text-sm text-slate-600" style={{ animationDelay: '0.65s' }}>
               Don't have an account?{" "}
               <button
                 type="button"

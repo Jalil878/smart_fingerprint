@@ -163,8 +163,8 @@ function AdminDashboard({ onLogout }) {
     : requests;
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900 md:flex">
-      <aside className="border-b border-slate-800 bg-slate-950 text-white md:min-h-screen md:w-72 md:border-b-0 md:border-r">
+    <main className="min-h-screen animate-fade-in bg-slate-100 text-slate-900 md:flex">
+      <aside className="animate-slide-in-left border-b border-slate-800 bg-slate-950 text-white md:min-h-screen md:w-72 md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white text-sm font-bold text-slate-950">
             SF
@@ -205,18 +205,18 @@ function AdminDashboard({ onLogout }) {
         </div>
       </aside>
 
-      <section className="flex-1 px-5 py-8">
+      <section className="animate-slide-in-right flex-1 px-5 py-8">
         <div className="mx-auto max-w-6xl">
           {activePage === "dashboard" && (
             <>
               <div className="mb-8">
-                <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                <p className="animate-fade-in-up text-sm font-semibold uppercase tracking-wide text-slate-500">
                   Overview
                 </p>
-                <h2 className="mt-2 text-3xl font-bold">Account Approval</h2>
+                <h2 className="mt-2 animate-fade-in-up text-3xl font-bold" style={{ animationDelay: '0.1s' }}>Account Approval</h2>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="animate-stagger grid gap-4 md:grid-cols-3">
                 <div className="rounded-lg bg-white p-5 shadow-sm">
                   <p className="text-sm font-medium text-slate-500">
                     Total Student
@@ -264,7 +264,7 @@ function AdminDashboard({ onLogout }) {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-4 rounded-md border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
+              <div className="animate-stagger mt-5 grid grid-cols-1 gap-4 rounded-md border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-md border border-gray-200 p-5 text-center">
                   <p className="mb-4 text-sm font-medium text-gray-700">
                     New Student Signup Requests
@@ -309,7 +309,7 @@ function AdminDashboard({ onLogout }) {
                   </a>
                 </div>
               </div>
-              <div className="mt-8 overflow-hidden rounded-lg bg-white shadow-sm">
+              <div className="mt-8 animate-fade-in-up overflow-hidden rounded-lg bg-white shadow-sm" style={{ animationDelay: '0.4s' }}>
                 <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold">All Signup Requests</h3>
@@ -358,7 +358,7 @@ function AdminDashboard({ onLogout }) {
                         <th className="px-5 py-3 font-semibold">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="animate-stagger divide-y divide-slate-200">
                       {filteredRequests.map((request) => {
                         const fullName = [
                           request.first_name,
@@ -464,12 +464,12 @@ function AdminDashboard({ onLogout }) {
 
       {isRequestModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6"
+          className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby="signup-requests-title"
         >
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
+          <div className="animate-scale-in max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

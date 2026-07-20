@@ -14,7 +14,7 @@ const courses = [
 
 function Signup({ onShowLogin }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("student");
+  const [selectedRole, setSelectedRole] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +23,11 @@ function Signup({ onShowLogin }) {
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
+
+    if (!selectedRole) {
+      setErrorMessage("Please select a role first.");
+      return;
+    }
 
     if (!isSupabaseConfigured) {
       setErrorMessage("Add your Supabase URL and anon key to .env first.");
@@ -82,10 +87,10 @@ function Signup({ onShowLogin }) {
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen animate-fade-in bg-slate-100 text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-5 py-10">
         <section className="grid w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl md:grid-cols-[1fr_1.1fr]">
-          <div className="flex flex-col justify-between bg-slate-900 p-8 text-white">
+          <div className="flex animate-slide-in-left flex-col justify-between bg-slate-900 p-8 text-white">
             <div>
               <div className="mb-8 flex items-center gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white text-lg font-bold text-slate-900">
@@ -110,7 +115,7 @@ function Signup({ onShowLogin }) {
             </p>
           </div>
 
-          <div className="p-8 sm:p-10">
+          <div className="animate-slide-in-right p-8 sm:p-10" style={{ animationDelay: '0.1s' }}>
             <div className="mb-8">
               <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                 Get started
@@ -121,7 +126,7 @@ function Signup({ onShowLogin }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="animate-stagger grid grid-cols-2 gap-2">
                 {["faculty", "student"].map((role) => (
                   <button
                     key={role}
@@ -139,7 +144,7 @@ function Signup({ onShowLogin }) {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.2s both' }}>
                   <label
                     htmlFor="firstName"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -157,7 +162,7 @@ function Signup({ onShowLogin }) {
                   />
                 </div>
 
-                <div>
+                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.27s both' }}>
                   <label
                     htmlFor="middleName"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -174,7 +179,7 @@ function Signup({ onShowLogin }) {
                   />
                 </div>
 
-                <div>
+                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.34s both' }}>
                   <label
                     htmlFor="lastName"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -192,7 +197,7 @@ function Signup({ onShowLogin }) {
                   />
                 </div>
 
-                <div>
+                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.41s both' }}>
                   <label
                     htmlFor="idNumber"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -212,7 +217,7 @@ function Signup({ onShowLogin }) {
               </div>
 
               {selectedRole === "student" && (
-                <div>
+                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.48s both' }}>
                   <label
                     htmlFor="course"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -238,7 +243,7 @@ function Signup({ onShowLogin }) {
                 </div>
               )}
 
-              <div>
+              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.55s both' }}>
                 <label
                   htmlFor="email"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -256,7 +261,7 @@ function Signup({ onShowLogin }) {
                 />
               </div>
 
-              <div>
+              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.62s both' }}>
                 <label
                   htmlFor="password"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -299,12 +304,13 @@ function Signup({ onShowLogin }) {
                 type="submit"
                 disabled={isLoading}
                 className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+                style={{ animation: 'fade-in-up 0.5s ease-out 0.72s both' }}
               >
                 {isLoading ? "Creating account..." : "Create account"}
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-slate-600">
+            <p className="mt-6 animate-fade-in-up text-center text-sm text-slate-600" style={{ animationDelay: '0.8s' }}>
               Already have an account?{" "}
               <button
                 type="button"
