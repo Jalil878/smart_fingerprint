@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import CreateAttendance from "./CreateAttendance";
+import DayAttendance from "./DayAttendance";
 
 function FacultyDashboard({ profile, onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
@@ -8,6 +9,15 @@ function FacultyDashboard({ profile, onLogout }) {
   const [attendanceError, setAttendanceError] = useState("");
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(true);
   const [refreshCount, setRefreshCount] = useState(0);
+
+  const formatTime = (time) => {
+    if (!time) return "";
+    const [h, m] = time.split(":");
+    const hour = parseInt(h, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${m} ${ampm}`;
+  };
 
   useEffect(() => {
     const loadAttendanceSessions = async () => {
@@ -43,8 +53,31 @@ function FacultyDashboard({ profile, onLogout }) {
     setActivePage("dashboard");
   };
 
+  const [selectedAttendance, setSelectedAttendance] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createDayError, setCreateDayError] = useState("");
+  const [dayRefreshKey, setDayRefreshKey] = useState(0);
+
   const handleGoToDashboard = () => {
     setActivePage("dashboard");
+    setSelectedAttendance(null);
+  };
+
+  const handleCreateDay = async () => {
+    if (!selectedAttendance) return;
+
+    const { data: nextDay, error } = await supabase.rpc(
+      "add_day_to_session",
+      { p_session_id: selectedAttendance.id }
+    );
+
+    if (error) {
+      setCreateDayError(error.message);
+      return;
+    }
+
+    setDayRefreshKey((k) => k + 1);
+    setShowCreateModal(false);
   };
   const facultyName =
     [profile?.first_name, profile?.middle_name, profile?.last_name]
@@ -116,27 +149,43 @@ function FacultyDashboard({ profile, onLogout }) {
 
               <div className="animate-stagger divide-y divide-slate-200">
                 {attendanceSessions.map((item) => (
-                  <div
+                  <button
                     key={item.id}
-                    className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_auto]"
+                    type="button"
+                    onClick={() => {
+                      setSelectedAttendance(item);
+                      setActivePage("day attendance");
+                    }}
+                    className="w-full grid gap-4 px-5 py-4 text-left transition hover:bg-slate-50 md:grid-cols-[1fr_auto]"
                   >
                     <div>
                       <h4 className="font-semibold text-slate-950">
                         {item.subject_name}
                       </h4>
                       <p className="mt-1 text-sm text-slate-500">
-                        {item.section} - {item.attendance_time}
+                        {item.section} - {formatTime(item.attendance_time)}
                         {item.room ? ` - ${item.room}` : ""}
                       </p>
                     </div>
-                    <span className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-                      Created
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                      View
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           </>
+        )}
+
+        {activePage === "day attendance" && selectedAttendance && (
+          <DayAttendance
+            attendance={selectedAttendance}
+            onBack={handleGoToDashboard}
+            dayRefreshKey={dayRefreshKey}
+          />
         )}
 
         {activePage === "create attendance" && (
@@ -149,35 +198,57 @@ function FacultyDashboard({ profile, onLogout }) {
 
       <nav className="animate-fade-in-up fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white px-4 pb-3 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]" style={{ animationDelay: '0.3s' }}>
         <div className="mx-auto flex max-w-sm items-center justify-around">
-          {[
-            {
-              key: "dashboard",
-              label: "Dashboard",
-              icon: (
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="9" />
-                  <rect x="14" y="3" width="7" height="5" />
-                  <rect x="14" y="12" width="7" height="9" />
-                  <rect x="3" y="16" width="7" height="5" />
-                </svg>
-              ),
-            },
-            {
-              key: "create attendance",
-              label: "Create",
-              icon: (
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                  <line x1="12" y1="8" x2="12" y2="16" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-              ),
-            },
-          ].map(({ key, label, icon }) => (
+          {(activePage === "day attendance"
+            ? [
+                {
+                  key: "create attendance",
+                  label: "Create Day",
+                  icon: (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="9" />
+                      <line x1="12" y1="8" x2="12" y2="16" />
+                      <line x1="8" y1="12" x2="16" y2="12" />
+                    </svg>
+                  ),
+                },
+              ]
+            : [
+                {
+                  key: "dashboard",
+                  label: "Dashboard",
+                  icon: (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="9" />
+                      <rect x="14" y="3" width="7" height="5" />
+                      <rect x="14" y="12" width="7" height="9" />
+                      <rect x="3" y="16" width="7" height="5" />
+                    </svg>
+                  ),
+                },
+                {
+                  key: "create attendance",
+                  label: "Create",
+                  icon: (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="9" />
+                      <line x1="12" y1="8" x2="12" y2="16" />
+                      <line x1="8" y1="12" x2="16" y2="12" />
+                    </svg>
+                  ),
+                },
+              ]
+          ).map(({ key, label, icon }) => (
             <button
               key={key}
               type="button"
-              onClick={() => setActivePage(key)}
+              onClick={() => {
+                if (activePage === "day attendance") {
+                  setCreateDayError("");
+                  setShowCreateModal(true);
+                } else {
+                  setActivePage(key);
+                }
+              }}
               className={`relative flex flex-col items-center gap-0.5 px-6 py-1 text-xs font-semibold transition ${
                 activePage === key
                   ? "text-slate-900"
@@ -193,6 +264,39 @@ function FacultyDashboard({ profile, onLogout }) {
           ))}
         </div>
       </nav>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+          <div className="w-full max-w-sm overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="px-6 py-5">
+              <h3 className="text-xl font-bold text-slate-950">Create Day</h3>
+              <p className="mt-1 text-sm text-slate-500">Choose an option below.</p>
+              {createDayError && (
+                <p className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{createDayError}</p>
+              )}
+            </div>
+            <div className="flex gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateDayError("");
+                }}
+                className="flex-1 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateDay}
+                className="flex-1 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

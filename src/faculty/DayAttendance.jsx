@@ -1,0 +1,188 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
+
+function DayAttendance({ attendance, onBack, dayRefreshKey }) {
+  const [records, setRecords] = useState([]);
+  const [days, setDays] = useState([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const formatTime = (time) => {
+    if (!time) return "";
+    const [h, m] = time.split(":");
+    const hour = parseInt(h, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${m} ${ampm}`;
+  };
+
+  useEffect(() => {
+    const loadRecords = async () => {
+      setError("");
+      setIsLoading(true);
+
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select("*, students!inner(first_name, middle_name, last_name, id_number, course)")
+        .eq("attendance_id", attendance.id);
+
+      setIsLoading(false);
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      setRecords(data || []);
+    };
+
+    const loadDays = async () => {
+      const { data } = await supabase.rpc("get_session_days", {
+        p_session_id: attendance.id,
+      });
+      if (data) {
+        setDays(data.map((d) => d.day));
+      }
+    };
+
+    const loadTotalStudents = async () => {
+      const { data } = await supabase.rpc("count_session_students", {
+        p_session_id: attendance.id,
+      });
+      if (data !== null) setTotalStudents(data);
+    };
+
+    loadRecords();
+    loadDays();
+    loadTotalStudents();
+  }, [attendance.id, dayRefreshKey]);
+
+  const presentCount = records.filter((r) => r.status === "present").length;
+  const absentCount = records.filter((r) => r.status === "absent").length;
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </button>
+
+        <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Attendance Details
+        </p>
+        <h2 className="mt-2 text-3xl font-bold">{attendance.subject_name}</h2>
+      </div>
+
+      <div className="mb-6 grid gap-4 rounded-lg bg-white p-6 shadow-sm md:grid-cols-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Section</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{attendance.section}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Time</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{formatTime(attendance.attendance_time)}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Room</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{attendance.room || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Students</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{totalStudents}</p>
+        </div>
+      </div>
+
+      {!isLoading && records.length > 0 && (
+        <div className="mb-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+            <p className="text-sm font-medium text-emerald-700">Present</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-600">{presentCount}</p>
+          </div>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
+            <p className="text-sm font-medium text-rose-700">Absent</p>
+            <p className="mt-2 text-3xl font-bold text-rose-600">{absentCount}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-hidden rounded-lg bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <h3 className="text-lg font-bold">Day of Attendance</h3>
+        </div>
+
+        {isLoading && (
+          <p className="px-5 py-6 text-sm font-medium text-slate-500">Loading day records...</p>
+        )}
+
+        {days.length > 0 ? (
+          <div className="px-5 py-4 text-sm font-medium">
+            {days.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setSelectedDay(d)}
+                className={`block w-full rounded-md px-3 py-2 text-left transition ${
+                  selectedDay === d
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                Day {d}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {!isLoading && records.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Student Name</th>
+                  <th className="px-5 py-3 font-semibold">ID Number</th>
+                  <th className="px-5 py-3 font-semibold">Course</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {records.map((record) => {
+                  const s = record.students;
+                  const fullName = [s?.first_name, s?.middle_name, s?.last_name].filter(Boolean).join(" ");
+                  return (
+                    <tr key={record.id} className="hover:bg-slate-50">
+                      <td className="px-5 py-4 font-semibold text-slate-950">{fullName}</td>
+                      <td className="px-5 py-4 text-slate-600">{s?.id_number}</td>
+                      <td className="px-5 py-4 text-slate-600">{s?.course || "—"}</td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-block rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
+                            record.status === "present"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-rose-50 text-rose-700"
+                          }`}
+                        >
+                          {record.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default DayAttendance;

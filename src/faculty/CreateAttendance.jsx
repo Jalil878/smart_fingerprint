@@ -154,6 +154,7 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
       attendance_time: pendingAttendance.attendanceTime,
       room: pendingAttendance.room,
       created_at: new Date().toISOString(),
+      total_students: pendingAttendance.studentIdNumbers.length,
     });
     onGoToDashboard?.();
   };

@@ -9,6 +9,8 @@ create table if not exists public.attendance_sessions (
   updated_at timestamp with time zone default now()
 );
 
+
+
 create table if not exists public.attendance_session_students (
   id uuid primary key default gen_random_uuid(),
   attendance_session_id uuid not null references public.attendance_sessions(id) on delete cascade,
@@ -180,7 +182,8 @@ create or replace function public.create_attendance(
   p_section text,
   p_attendance_time time,
   p_room text,
-  p_student_id_numbers bigint[]
+  p_student_id_numbers bigint[],
+  p_day_number integer default null
 )
 returns uuid
 language plpgsql
@@ -190,6 +193,7 @@ as $$
 declare
   v_faculty_id_number bigint;
   v_attendance_session_id uuid;
+  v_day_number integer;
 begin
   select faculty.id_number
   into v_faculty_id_number
@@ -202,6 +206,15 @@ begin
 
   if p_student_id_numbers is null or array_length(p_student_id_numbers, 1) is null then
     raise exception 'Please select at least one student.';
+  end if;
+
+  if p_day_number is null then
+    select coalesce(max(day), 0) + 1
+    into v_day_number
+    from public.dayattendance
+    where faculty_id_number = v_faculty_id_number;
+  else
+    v_day_number := p_day_number;
   end if;
 
   insert into public.attendance_sessions (
@@ -240,12 +253,15 @@ begin
     raise exception 'Selected students were not found.';
   end if;
 
+  insert into public.dayattendance (day, attendance_session_id, faculty_id_number)
+  values (v_day_number, v_attendance_session_id, v_faculty_id_number);
+
   return v_attendance_session_id;
 end;
 $$;
 
-revoke all on function public.create_attendance(text, text, time, text, bigint[]) from public;
-grant execute on function public.create_attendance(text, text, time, text, bigint[]) to authenticated;
+revoke all on function public.create_attendance(text, text, time, text, bigint[], integer) from public;
+grant execute on function public.create_attendance(text, text, time, text, bigint[], integer) to authenticated;
 
 create or replace function public.get_my_attendance_sessions()
 returns table (
@@ -254,7 +270,9 @@ returns table (
   section text,
   attendance_time time,
   room text,
-  created_at timestamp with time zone
+  created_at timestamp with time zone,
+  total_students bigint,
+  day integer
 )
 language plpgsql
 security definer
@@ -279,7 +297,9 @@ begin
     attendance_sessions.section,
     attendance_sessions.attendance_time,
     attendance_sessions.room,
-    attendance_sessions.created_at
+    attendance_sessions.created_at,
+    coalesce((select count(*) from public.attendance_session_students where attendance_session_id = attendance_sessions.id), 0)::bigint as total_students,
+    coalesce((select min(day) from public.dayattendance where attendance_session_id = attendance_sessions.id), 0)::integer as day
   from public.attendance_sessions
   where attendance_sessions.faculty_id_number = v_faculty_id_number
   order by attendance_sessions.created_at desc;
@@ -288,3 +308,17 @@ $$;
 
 revoke all on function public.get_my_attendance_sessions() from public;
 grant execute on function public.get_my_attendance_sessions() to authenticated;
+
+create or replace function public.count_session_students(p_session_id uuid)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return (select count(*) from public.attendance_session_students where attendance_session_id = p_session_id);
+end;
+$$;
+
+revoke all on function public.count_session_students(uuid) from public;
+grant execute on function public.count_session_students(uuid) to authenticated;
