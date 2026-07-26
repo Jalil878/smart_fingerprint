@@ -87,35 +87,10 @@ function Signup({ onShowLogin }) {
   };
 
   return (
-    <main className="min-h-screen animate-fade-in bg-slate-100 text-slate-900">
+    <main className="min-h-screen bg-slate-100 text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-5 py-10">
-        <section className="grid w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl md:grid-cols-[1fr_1.1fr]">
-          <div className="flex animate-slide-in-left flex-col justify-between bg-slate-900 p-8 text-white">
-            <div>
-              <div className="mb-8 flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white text-lg font-bold text-slate-900">
-                  SF
-                </div>
-                <img
-                  src="peaci.png"
-                  alt="Peaci Logo"
-                  className="h-20 w-auto object-contain"
-                />
-              </div>
-              <h1 className="text-3xl font-bold leading-tight">
-                Create Smart Fingerprint Account
-              </h1>
-              <p className="mt-4 text-sm leading-6 text-slate-300">
-                Register an account for attendance monitoring and fingerprint
-                access.
-              </p>
-            </div>
-            <p className="mt-10 text-xs font-medium uppercase tracking-wide text-slate-400">
-              Account registration
-            </p>
-          </div>
-
-          <div className="animate-slide-in-right p-8 sm:p-10" style={{ animationDelay: '0.1s' }}>
+        <section className="w-full max-w-lg overflow-hidden rounded-lg bg-white shadow-xl">
+          <div className="p-8 sm:p-10">
             <div className="mb-8">
               <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                 Get started
@@ -126,7 +101,7 @@ function Signup({ onShowLogin }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="animate-stagger grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {["faculty", "student"].map((role) => (
                   <button
                     key={role}
@@ -144,7 +119,7 @@ function Signup({ onShowLogin }) {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.2s both' }}>
+                <div>
                   <label
                     htmlFor="firstName"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -162,7 +137,7 @@ function Signup({ onShowLogin }) {
                   />
                 </div>
 
-                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.27s both' }}>
+                <div>
                   <label
                     htmlFor="middleName"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -179,7 +154,7 @@ function Signup({ onShowLogin }) {
                   />
                 </div>
 
-                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.34s both' }}>
+                <div>
                   <label
                     htmlFor="lastName"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -197,7 +172,7 @@ function Signup({ onShowLogin }) {
                   />
                 </div>
 
-                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.41s both' }}>
+                <div>
                   <label
                     htmlFor="idNumber"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -217,7 +192,7 @@ function Signup({ onShowLogin }) {
               </div>
 
               {selectedRole === "student" && (
-                <div style={{ animation: 'fade-in-up 0.5s ease-out 0.48s both' }}>
+                <div>
                   <label
                     htmlFor="course"
                     className="mb-2 block text-sm font-medium text-slate-700"
@@ -243,7 +218,7 @@ function Signup({ onShowLogin }) {
                 </div>
               )}
 
-              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.55s both' }}>
+              <div>
                 <label
                   htmlFor="email"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -261,7 +236,7 @@ function Signup({ onShowLogin }) {
                 />
               </div>
 
-              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.62s both' }}>
+              <div>
                 <label
                   htmlFor="password"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -304,13 +279,13 @@ function Signup({ onShowLogin }) {
                 type="submit"
                 disabled={isLoading}
                 className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
-                style={{ animation: 'fade-in-up 0.5s ease-out 0.72s both' }}
+
               >
                 {isLoading ? "Creating account..." : "Create account"}
               </button>
             </form>
 
-            <p className="mt-6 animate-fade-in-up text-center text-sm text-slate-600" style={{ animationDelay: '0.8s' }}>
+            <p className="mt-6 text-center text-sm text-slate-600">
               Already have an account?{" "}
               <button
                 type="button"

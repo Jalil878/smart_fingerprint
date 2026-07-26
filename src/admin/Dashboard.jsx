@@ -15,26 +15,33 @@ function AdminDashboard({ onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
   const [requests, setRequests] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestModalRole, setRequestModalRole] = useState("student");
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [totalFaculty, setTotalFaculty] = useState(0);
   const [approvedCount, setApprovedCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const loadApprovedCount = async () => {
-    const [
-      { count: studentCount, error: studentError },
-      { count: facultyCount, error: facultyError },
-    ] = await Promise.all([
-      supabase.from("students").select("id", { count: "exact", head: true }),
-      supabase.from("faculty").select("id", { count: "exact", head: true }),
-    ]);
+    const { count: studentCount, error: studentError } = await supabase
+      .from("students")
+      .select("*", { count: "exact" })
+      .limit(0);
+
+    const { count: facultyCount, error: facultyError } = await supabase
+      .from("faculty")
+      .select("*", { count: "exact" })
+      .limit(0);
 
     if (studentError || facultyError) {
       setErrorMessage(studentError?.message || facultyError.message);
       return;
     }
 
+    setTotalStudents(studentCount || 0);
+    setTotalFaculty(facultyCount || 0);
     setApprovedCount((studentCount || 0) + (facultyCount || 0));
   };
 
@@ -142,8 +149,11 @@ function AdminDashboard({ onLogout }) {
   const roleLabel =
     requestModalRole.charAt(0).toUpperCase() + requestModalRole.slice(1);
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const roleFiltered = roleFilter === "all"
+    ? requests
+    : requests.filter((r) => r.role === roleFilter);
   const filteredRequests = normalizedSearchTerm
-    ? requests.filter((request) => {
+    ? roleFiltered.filter((request) => {
         const searchableText = [
           request.first_name,
           request.middle_name,
@@ -160,11 +170,11 @@ function AdminDashboard({ onLogout }) {
 
         return searchableText.includes(normalizedSearchTerm);
       })
-    : requests;
+    : roleFiltered;
 
   return (
     <main className="min-h-screen animate-fade-in bg-slate-100 text-slate-900 md:flex">
-      <aside className="animate-slide-in-left border-b border-slate-800 bg-slate-950 text-white md:min-h-screen md:w-72 md:border-b-0 md:border-r">
+      <aside className="animate-slide-in-left border-b border-slate-800 bg-slate-950 text-white md:sticky md:top-0 md:h-screen md:w-72 md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white text-sm font-bold text-slate-950">
             SF
@@ -213,7 +223,7 @@ function AdminDashboard({ onLogout }) {
                 <p className="animate-fade-in-up text-sm font-semibold uppercase tracking-wide text-slate-500">
                   Overview
                 </p>
-                <h2 className="mt-2 animate-fade-in-up text-3xl font-bold" style={{ animationDelay: '0.1s' }}>Account Approval</h2>
+                <h2 className="mt-2 animate-fade-in-up text-3xl font-bold" style={{ animationDelay: '0.1s' }}>Dashboard</h2>
               </div>
 
               <div className="animate-stagger grid gap-4 md:grid-cols-3">
@@ -222,7 +232,7 @@ function AdminDashboard({ onLogout }) {
                     Total Student
                   </p>
                   <p className="mt-3 text-3xl font-bold text-amber-600">
-                    {pendingCount}
+                    {totalStudents}
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-5 shadow-sm">
@@ -230,7 +240,7 @@ function AdminDashboard({ onLogout }) {
                     Total Faculty
                   </p>
                   <p className="mt-3 text-3xl font-bold text-amber-600">
-                    {pendingCount}
+                    {totalFaculty}
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-5 shadow-sm">
@@ -242,73 +252,26 @@ function AdminDashboard({ onLogout }) {
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-slate-500">
-                    Total Fingerprint Devices
-                  </p>
+                  <p className="text-sm font-medium text-slate-500">Student Pending</p>
                   <p className="mt-3 text-3xl font-bold text-amber-600">
-                    {pendingCount}
-                  </p>
-                </div>
-
-                <div className="rounded-lg bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-slate-500">Pending</p>
-                  <p className="mt-3 text-3xl font-bold text-amber-600">
-                    {pendingCount}
+                    {requests.filter((r) => r.role === "student" && r.status === "pending").length}
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-slate-500">Approved</p>
-                  <p className="mt-3 text-3xl font-bold text-emerald-600">
-                    {approvedCount}
+                  <p className="text-sm font-medium text-slate-500">Faculty Pending</p>
+                  <p className="mt-3 text-3xl font-bold text-amber-600">
+                    {requests.filter((r) => r.role === "faculty" && r.status === "pending").length}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white p-5 shadow-sm">
+                  <p className="text-sm font-medium text-slate-500">Total User of Device</p>
+                  <p className="mt-3 text-3xl font-bold text-amber-600">
+                    {totalStudents + totalFaculty}
                   </p>
                 </div>
               </div>
 
-              <div className="animate-stagger mt-5 grid grid-cols-1 gap-4 rounded-md border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-md border border-gray-200 p-5 text-center">
-                  <p className="mb-4 text-sm font-medium text-gray-700">
-                    New Student Signup Requests
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRequestModalRole("student");
-                      setIsRequestModalOpen(true);
-                    }}
-                    className="inline-block rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900"
-                  >
-                    Add
-                  </button>
-                </div>
 
-                <div className="rounded-md border border-gray-200 p-5 text-center">
-                  <p className="mb-4 text-sm font-medium text-gray-700">
-                    New Faculty Signup Requests
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRequestModalRole("faculty");
-                      setIsRequestModalOpen(true);
-                    }}
-                    className="inline-block rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900"
-                  >
-                    Add
-                  </button>
-                </div>
-
-                <div className="rounded-md border border-gray-200 p-5 text-center">
-                  <p className="mb-4 text-sm font-medium text-gray-700">
-                    Create New Fingerprint Device
-                  </p>
-                  <a
-                    href="#"
-                    className="inline-block rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900"
-                  >
-                    Add
-                  </a>
-                </div>
-              </div>
               <div className="mt-8 animate-fade-in-up overflow-hidden rounded-lg bg-white shadow-sm" style={{ animationDelay: '0.4s' }}>
                 <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -317,6 +280,22 @@ function AdminDashboard({ onLogout }) {
                       Search by name, role, ID number, email, course, or status.
                     </p>
                   </div>
+
+                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                    {["all", "student", "faculty"].map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setRoleFilter(f)}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition ${
+                          roleFilter === f
+                            ? "bg-slate-900 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
 
                   <label className="relative block w-full sm:max-w-xs">
                     <span className="sr-only">Search signup requests</span>
@@ -344,6 +323,7 @@ function AdminDashboard({ onLogout }) {
                       onChange={(event) => setSearchTerm(event.target.value)}
                     />
                   </label>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">

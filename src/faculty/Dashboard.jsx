@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import CreateAttendance from "./CreateAttendance";
 import DayAttendance from "./DayAttendance";
+import StatusAttendance from "./StatusAttendance";
 
 function FacultyDashboard({ profile, onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
@@ -57,10 +58,21 @@ function FacultyDashboard({ profile, onLogout }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createDayError, setCreateDayError] = useState("");
   const [dayRefreshKey, setDayRefreshKey] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(null);
 
   const handleGoToDashboard = () => {
     setActivePage("dashboard");
     setSelectedAttendance(null);
+    setSelectedDay(null);
+  };
+
+  const handleBackToDayAttendance = () => {
+    setActivePage("day attendance");
+  };
+
+  const handleSelectDay = (day) => {
+    setSelectedDay(day);
+    setActivePage("status attendance");
   };
 
   const handleCreateDay = async () => {
@@ -185,6 +197,15 @@ function FacultyDashboard({ profile, onLogout }) {
             attendance={selectedAttendance}
             onBack={handleGoToDashboard}
             dayRefreshKey={dayRefreshKey}
+            onSelectDay={handleSelectDay}
+          />
+        )}
+
+        {activePage === "status attendance" && selectedAttendance && selectedDay && (
+          <StatusAttendance
+            attendance={selectedAttendance}
+            day={selectedDay}
+            onBack={handleBackToDayAttendance}
           />
         )}
 
@@ -198,7 +219,28 @@ function FacultyDashboard({ profile, onLogout }) {
 
       <nav className="animate-fade-in-up fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white px-4 pb-3 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]" style={{ animationDelay: '0.3s' }}>
         <div className="mx-auto flex max-w-sm items-center justify-around">
-          {(activePage === "day attendance"
+          {(activePage === "status attendance"
+            ? [
+                {
+                  key: "start",
+                  label: "Start",
+                  icon: (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  ),
+                },
+                {
+                  key: "stop",
+                  label: "Stop",
+                  icon: (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  ),
+                },
+              ]
+            : activePage === "day attendance"
             ? [
                 {
                   key: "create attendance",
@@ -245,6 +287,8 @@ function FacultyDashboard({ profile, onLogout }) {
                 if (activePage === "day attendance") {
                   setCreateDayError("");
                   setShowCreateModal(true);
+                } else if (activePage === "status attendance") {
+                  // start/stop handled here
                 } else {
                   setActivePage(key);
                 }

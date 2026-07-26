@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-function DayAttendance({ attendance, onBack, dayRefreshKey }) {
+function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
   const [records, setRecords] = useState([]);
   const [days, setDays] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
@@ -68,9 +68,9 @@ function DayAttendance({ attendance, onBack, dayRefreshKey }) {
         <button
           type="button"
           onClick={onBack}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900"
+          className="group mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="h-4 w-4 transition group-hover:-translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
@@ -129,7 +129,7 @@ function DayAttendance({ attendance, onBack, dayRefreshKey }) {
               <button
                 key={d}
                 type="button"
-                onClick={() => setSelectedDay(d)}
+                onClick={() => onSelectDay(d)}
                 className={`block w-full rounded-md px-3 py-2 text-left transition ${
                   selectedDay === d
                     ? "bg-slate-900 text-white"

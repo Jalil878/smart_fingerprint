@@ -11,11 +11,6 @@ function Login({ onSignIn, onShowSignup }) {
     event.preventDefault();
     setErrorMessage("");
 
-    if (!selectedRole) {
-      setErrorMessage("Please select a role first.");
-      return;
-    }
-
     if (!isSupabaseConfigured) {
       setErrorMessage("Add your Supabase URL and anon key to .env first.");
       return;
@@ -41,25 +36,25 @@ function Login({ onSignIn, onShowSignup }) {
 
     const profile = data.user?.user_metadata || {};
 
-    if (selectedRole === "admin") {
-      const { data: admin, error: adminError } = await supabase
-        .from("admins")
-        .select("name, email, role")
-        .eq("email", data.user.email)
-        .single();
+    const { data: admin, error: adminError } = await supabase
+      .from("admins")
+      .select("name, email, role")
+      .eq("email", data.user.email)
+      .maybeSingle();
 
-      if (adminError || !admin) {
-        setErrorMessage("This account is not registered as an admin.");
-        await supabase.auth.signOut();
-        return;
-      }
-
+    if (admin) {
       onSignIn("admin", {
         ...profile,
         name: admin.name,
         email: admin.email,
         role: admin.role,
       });
+      return;
+    }
+
+    if (!selectedRole) {
+      setErrorMessage("Please select a role first.");
+      await supabase.auth.signOut();
       return;
     }
 
@@ -147,8 +142,8 @@ function Login({ onSignIn, onShowSignup }) {
                 </p>
               )}
 
-              <div className="animate-stagger grid grid-cols-3 gap-2">
-                {["admin", "faculty", "student"].map((role) => (
+              <div className="animate-stagger grid grid-cols-2 gap-2">
+                {["faculty", "student"].map((role) => (
                   <button
                     key={role}
                     type="button"
