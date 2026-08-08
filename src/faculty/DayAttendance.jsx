@@ -8,6 +8,10 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
   const [selectedDay, setSelectedDay] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
+  const [sessionStudents, setSessionStudents] = useState([]);
+  const [isStudentsLoading, setIsStudentsLoading] = useState(false);
+  const [studentsError, setStudentsError] = useState("");
 
   const formatTime = (time) => {
     if (!time) return "";
@@ -62,6 +66,31 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
   const presentCount = records.filter((r) => r.status === "present").length;
   const absentCount = records.filter((r) => r.status === "absent").length;
 
+  const openStudentsModal = async () => {
+    setIsStudentsModalOpen(true);
+    setStudentsError("");
+    setIsStudentsLoading(true);
+
+    const { data, error } = await supabase.rpc("get_session_students", {
+      p_session_id: attendance.id,
+    });
+
+    if (error) {
+      setStudentsError(error.message);
+      setIsStudentsLoading(false);
+      return;
+    }
+
+    setSessionStudents(data || []);
+    setIsStudentsLoading(false);
+  };
+
+  const closeStudentsModal = () => {
+    setIsStudentsModalOpen(false);
+    setSessionStudents([]);
+    setStudentsError("");
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
@@ -95,10 +124,14 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Room</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{attendance.room || "N/A"}</p>
         </div>
-        <div>
+        <button
+          type="button"
+          onClick={openStudentsModal}
+          className="rounded-lg p-4 text-left transition hover:bg-slate-50"
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Students</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{totalStudents}</p>
-        </div>
+        </button>
       </div>
 
       {!isLoading && records.length > 0 && (
@@ -177,10 +210,104 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
                   );
                 })}
               </tbody>
-            </table>
-          </div>
+          </table>
+        </div>
         )}
       </div>
+
+      {isStudentsModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="students-list-title"
+        >
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="border-b border-slate-200 px-6 py-5">
+              <h3 id="students-list-title" className="text-xl font-bold">
+                Students - {attendance.subject_name}
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Section {attendance.section}
+              </p>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto">
+              {isStudentsLoading ? (
+                <p className="px-6 py-6 text-sm font-medium text-slate-500">
+                  Loading students...
+                </p>
+              ) : studentsError ? (
+                <p className="px-6 py-6 text-sm font-medium text-rose-700">
+                  {studentsError}
+                </p>
+              ) : sessionStudents.length === 0 ? (
+                <p className="px-6 py-6 text-sm font-medium text-slate-500">
+                  No students enrolled in this session.
+                </p>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold">Student Name</th>
+                      <th className="px-6 py-3 font-semibold">Course</th>
+                      <th className="px-6 py-3 font-semibold">ID Number</th>
+                      <th className="px-6 py-3 font-semibold">Fingerprint</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {sessionStudents.map((student) => {
+                      const fullName = [
+                        student.first_name,
+                        student.middle_name,
+                        student.last_name,
+                      ]
+                        .filter(Boolean)
+                        .join(" ");
+                      const hasFingerprint = Boolean(student.fingerprint_id);
+
+                      return (
+                        <tr key={student.id_number}>
+                          <td className="px-6 py-3.5 font-semibold text-slate-950">
+                            {fullName}
+                          </td>
+                          <td className="px-6 py-3.5 text-slate-600">
+                            {student.course || "\u2014"}
+                          </td>
+                          <td className="px-6 py-3.5 text-slate-600">
+                            {student.id_number}
+                          </td>
+                          <td className="px-6 py-3.5">
+                            {hasFingerprint ? (
+                              <span className="inline-block rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                Enrolled
+                              </span>
+                            ) : (
+                              <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                                Not Enrolled
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={closeStudentsModal}
+                className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

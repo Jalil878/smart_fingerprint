@@ -59,6 +59,8 @@ function FacultyDashboard({ profile, onLogout }) {
   const [createDayError, setCreateDayError] = useState("");
   const [dayRefreshKey, setDayRefreshKey] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState("");
 
   const handleGoToDashboard = () => {
     setActivePage("dashboard");
@@ -206,6 +208,8 @@ function FacultyDashboard({ profile, onLogout }) {
             attendance={selectedAttendance}
             day={selectedDay}
             onBack={handleBackToDayAttendance}
+            isScanning={isScanning}
+            onScanMessage={setScanMessage}
           />
         )}
 
@@ -218,6 +222,11 @@ function FacultyDashboard({ profile, onLogout }) {
       </section>
 
       <nav className="animate-fade-in-up fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white px-4 pb-3 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]" style={{ animationDelay: '0.3s' }}>
+        {scanMessage && (
+          <p className="mb-2 rounded-md bg-slate-900 px-3 py-2 text-center text-xs font-semibold text-white">
+            {scanMessage}
+          </p>
+        )}
         <div className="mx-auto flex max-w-sm items-center justify-around">
           {(activePage === "status attendance"
             ? [
@@ -288,7 +297,13 @@ function FacultyDashboard({ profile, onLogout }) {
                   setCreateDayError("");
                   setShowCreateModal(true);
                 } else if (activePage === "status attendance") {
-                  // start/stop handled here
+                  if (key === "start") {
+                    setScanMessage("Starting fingerprint attendance...");
+                    setIsScanning(true);
+                  } else if (key === "stop") {
+                    setIsScanning(false);
+                    setScanMessage("Fingerprint attendance stopped.");
+                  }
                 } else {
                   setActivePage(key);
                 }

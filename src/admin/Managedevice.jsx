@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import {
+  enrollFingerprint as enrollFingerprintOnDevice,
+  verifyFingerprint as verifyFingerprintOnDevice,
+  deleteFingerprint as deleteFingerprintOnDevice,
+  deleteAllFingerprints as deleteAllFingerprintsOnDevice,
+  getStoredUsers,
+  pingEsp32,
+  setEsp32BaseUrl,
+} from "../lib/esp32Api";
 
 function ManageDevice() {
   const [device, setDevice] = useState(null);
@@ -19,8 +28,16 @@ function ManageDevice() {
   const [verifySearchTerm, setVerifySearchTerm] = useState("");
   const [deleteSearchTerm, setDeleteSearchTerm] = useState("");
   const [verifiedStudentId, setVerifiedStudentId] = useState(null);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [storedFingerprintIds, setStoredFingerprintIds] = useState([]);
+  const [isLoadingStoredIds, setIsLoadingStoredIds] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeviceOnline, setIsDeviceOnline] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const loadDeviceData = async () => {
     setErrorMessage("");
@@ -76,6 +93,64 @@ function ManageDevice() {
   useEffect(() => {
     loadDeviceData();
   }, []);
+
+  const loadStoredFingerprintIds = async () => {
+    if (!isDeviceOnline) {
+      setStoredFingerprintIds([]);
+      return;
+    }
+
+    setIsLoadingStoredIds(true);
+
+    try {
+      const ids = await getStoredUsers();
+      setStoredFingerprintIds(ids.map(Number).sort((a, b) => a - b));
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error ? loadError.message : "Failed to load IDs";
+      setErrorMessage(message);
+      setStoredFingerprintIds([]);
+    } finally {
+      setIsLoadingStoredIds(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isDeviceOnline) {
+      loadStoredFingerprintIds();
+    }
+  }, [isDeviceOnline]);
+
+  useEffect(() => {
+    if (!device?.device_url) {
+      return;
+    }
+
+    setEsp32BaseUrl(device.device_url);
+
+    let cancelled = false;
+
+    const checkHealth = async () => {
+      try {
+        await pingEsp32();
+        if (!cancelled) {
+          setIsDeviceOnline(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsDeviceOnline(false);
+        }
+      }
+    };
+
+    checkHealth();
+    const intervalId = setInterval(checkHealth, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [device?.device_url]);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const filteredFaculty = normalizedSearchTerm
@@ -140,17 +215,41 @@ function ManageDevice() {
     }
 
     setErrorMessage("");
+    setSuccessMessage("");
+    setIsEnrolling(true);
 
-    const { error } = await supabase
+    try {
+      await enrollFingerprintOnDevice(Number(generatedFingerprintId));
+    } catch (enrollError) {
+      const message =
+        enrollError instanceof Error ? enrollError.message : "Enrollment failed";
+      setErrorMessage(message);
+      setIsEnrolling(false);
+      return;
+    }
+
+    const { data: updatedRows, error } = await supabase
       .from("students")
       .update({
         fingerprint_id: generatedFingerprintId,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", enrollingStudent.id);
+      .eq("id", enrollingStudent.id)
+      .select("id, fingerprint_id");
+
+    setIsEnrolling(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(
+        `Fingerprint enrolled on device but failed to save to database: ${error.message}`,
+      );
+      return;
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      setErrorMessage(
+        `Fingerprint enrolled on device but no student row matched ID ${enrollingStudent.id}. Nothing was saved.`,
+      );
       return;
     }
 
@@ -161,8 +260,12 @@ function ManageDevice() {
           : currentStudent,
       ),
     );
+    setSuccessMessage(
+      `Fingerprint ID ${generatedFingerprintId} saved to student record.`,
+    );
     setEnrollingStudent(null);
     setGeneratedFingerprintId("");
+    loadStoredFingerprintIds();
   };
 
   const normalizedVerifySearchTerm = verifySearchTerm.trim().toLowerCase();
@@ -199,8 +302,32 @@ function ManageDevice() {
       })
     : students;
 
-  const verifyStudent = (student) => {
-    setVerifiedStudentId(student.id);
+  const verifyStudent = async (student) => {
+    setErrorMessage("");
+    setIsVerifying(true);
+
+    try {
+      const result = await verifyFingerprintOnDevice();
+      const matchedId = Number(result?.id);
+
+      if (!matchedId || matchedId !== Number(student.fingerprint_id)) {
+        setErrorMessage(
+          `No match. Scanned fingerprint ID ${matchedId} does not match ${student.fingerprint_id}.`,
+        );
+        setIsVerifying(false);
+        return;
+      }
+
+      setVerifiedStudentId(student.id);
+    } catch (verifyError) {
+      const message =
+        verifyError instanceof Error
+          ? verifyError.message
+          : "Verification failed";
+      setErrorMessage(message);
+    }
+
+    setIsVerifying(false);
   };
 
   const deleteFingerprint = async (student) => {
@@ -213,11 +340,24 @@ function ManageDevice() {
     }
 
     setErrorMessage("");
+    setIsDeleting(true);
+
+    try {
+      await deleteFingerprintOnDevice(Number(student.fingerprint_id));
+    } catch (deleteError) {
+      const message =
+        deleteError instanceof Error ? deleteError.message : "Delete failed";
+      setErrorMessage(message);
+      setIsDeleting(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("students")
       .update({ fingerprint_id: null, updated_at: new Date().toISOString() })
       .eq("id", student.id);
+
+    setIsDeleting(false);
 
     if (error) {
       setErrorMessage(error.message);
@@ -231,6 +371,53 @@ function ManageDevice() {
           : currentStudent,
       ),
     );
+    loadStoredFingerprintIds();
+  };
+
+  const deleteAllFingerprints = async () => {
+    const confirmed = window.confirm(
+      "Delete ALL fingerprints from the device? This cannot be undone.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setErrorMessage("");
+    setSuccessMessage("");
+    setIsDeletingAll(true);
+
+    try {
+      await deleteAllFingerprintsOnDevice();
+    } catch (deleteAllError) {
+      const message =
+        deleteAllError instanceof Error
+          ? deleteAllError.message
+          : "Delete all failed";
+      setErrorMessage(message);
+      setIsDeletingAll(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("students")
+      .update({ fingerprint_id: null, updated_at: new Date().toISOString() })
+      .not("fingerprint_id", "is", null);
+
+    setIsDeletingAll(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+    }
+
+    setStudents((currentStudents) =>
+      currentStudents.map((currentStudent) => ({
+        ...currentStudent,
+        fingerprint_id: null,
+      })),
+    );
+    setStoredFingerprintIds([]);
+    setSuccessMessage("All fingerprints deleted from the device.");
   };
 
   const addUser = async (member) => {
@@ -333,7 +520,7 @@ function ManageDevice() {
                 setVerifiedStudentId(null);
                 setIsVerifyModalOpen(true);
               }}
-              className="rounded-md bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600"
+              className="rounded-md bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600"
             >
               Verify
             </button>
@@ -394,13 +581,31 @@ function ManageDevice() {
 
           <div className="rounded-lg border border-slate-200 p-5">
             <p className="text-sm font-medium text-slate-500">Status</p>
-            <p className="mt-3 text-lg font-bold text-emerald-600">Connected</p>
+            {isLoading ? (
+              <p className="mt-3 text-lg font-bold text-slate-500">
+                Loading...
+              </p>
+            ) : (
+              <p
+                className={`mt-3 text-lg font-bold ${
+                  isDeviceOnline ? "text-emerald-600" : "text-rose-600"
+                }`}
+              >
+                {isDeviceOnline ? "Connected" : "Offline"}
+              </p>
+            )}
           </div>
         </div>
 
         {errorMessage && (
           <p className="border-t border-slate-200 px-5 py-4 text-sm font-medium text-rose-700">
             {errorMessage}
+          </p>
+        )}
+
+        {successMessage && (
+          <p className="border-t border-slate-200 px-5 py-4 text-sm font-medium text-emerald-700">
+            {successMessage}
           </p>
         )}
       </div>
@@ -499,6 +704,65 @@ function ManageDevice() {
             No faculty users match your search.
           </p>
         )}
+      </div>
+
+      <div className="mt-8 overflow-hidden rounded-lg bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-slate-950">
+              Fingerprints on Device
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              All fingerprint IDs currently stored in the scanner.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={loadStoredFingerprintIds}
+              disabled={!isDeviceOnline || isLoadingStoredIds}
+              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={deleteAllFingerprints}
+              disabled={!isDeviceOnline || isDeletingAll || storedFingerprintIds.length === 0}
+              className="rounded-md border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeletingAll ? "Deleting..." : "Delete All"}
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5">
+          {!isDeviceOnline ? (
+            <p className="text-sm font-medium text-slate-500">
+              Device is offline. Connect the fingerprint device to see stored IDs.
+            </p>
+          ) : isLoadingStoredIds ? (
+            <p className="text-sm font-medium text-slate-500">
+              Loading stored fingerprints...
+            </p>
+          ) : storedFingerprintIds.length === 0 ? (
+            <p className="text-sm font-medium text-slate-500">
+              No fingerprints stored on the device.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {storedFingerprintIds.map((id) => (
+                <span
+                  key={id}
+                  className="inline-flex items-center rounded-md bg-slate-100 px-3 py-1.5 font-mono text-sm font-semibold text-slate-900"
+                >
+                  ID {id}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {isAddModalOpen && (
@@ -663,9 +927,10 @@ function ManageDevice() {
                   <button
                     type="button"
                     onClick={confirmEnroll}
-                    className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                    disabled={isEnrolling}
+                    className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Start Enroll
+                    {isEnrolling ? "Enrolling..." : "Start Enroll"}
                   </button>
                 </div>
               </>
@@ -828,9 +1093,10 @@ function ManageDevice() {
                           <button
                             type="button"
                             onClick={() => verifyStudent(student)}
-                            className="rounded-md bg-amber-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-600"
+                            disabled={isVerifying}
+                            className="rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Verify
+                            {isVerifying ? "Verifying..." : "Verify"}
                           </button>
                         )}
                       </div>
@@ -927,9 +1193,10 @@ function ManageDevice() {
                           <button
                             type="button"
                             onClick={() => deleteFingerprint(student)}
-                            className="rounded-md border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                            disabled={isDeleting}
+                            className="rounded-md border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Delete
+                            {isDeleting ? "Deleting..." : "Delete"}
                           </button>
                         )}
                       </div>
