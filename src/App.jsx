@@ -27,8 +27,8 @@ function App() {
 
   const renderDashboard = () => {
     const dashboards = {
-      faculty: <FacultyDashboard profile={userProfile} onLogout={() => setShowLogoutModal(true)} />,
-      student: <StudentDashboard profile={userProfile} onLogout={() => setShowLogoutModal(true)} />,
+      faculty: <FacultyDashboard profile={userProfile} onLogout={() => setShowLogoutModal(true)} onProfileUpdate={setUserProfile} />,
+      student: <StudentDashboard profile={userProfile} onLogout={() => setShowLogoutModal(true)} onProfileUpdate={setUserProfile} />,
       admin: <AdminDashboard onLogout={() => setShowLogoutModal(true)} />,
     };
 

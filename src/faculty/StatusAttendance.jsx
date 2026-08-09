@@ -20,6 +20,9 @@ function StatusAttendance({
   const [sessionStudents, setSessionStudents] = useState([]);
   const [deviceUrl, setDeviceUrl] = useState("");
   const [scanStatus, setScanStatus] = useState("");
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const scanningRef = useRef(false);
   const recordsRef = useRef([]);
   const sessionStudentsRef = useRef([]);
@@ -287,9 +290,47 @@ function StatusAttendance({
     }
   }, [isScanning]);
 
+  useEffect(() => {
+    if (!scanStatus) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setScanStatus("");
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [scanStatus]);
+
   const presentCount = records.filter((r) => r.status === "present").length;
   const lateCount = records.filter((r) => r.status === "late").length;
   const absentCount = records.filter((r) => r.status === "absent").length;
+  const noRecordCount = sessionStudents.length - (presentCount + lateCount + absentCount);
+
+  const handleSaveAttendance = async () => {
+    setSaveError("");
+    setIsSavingAttendance(true);
+
+    const { data: markedCount, error: markError } = await supabase.rpc(
+      "mark_absent_students",
+      {
+        p_session_id: attendance.id,
+        p_day: day,
+      },
+    );
+
+    if (markError) {
+      setSaveError(markError.message);
+      setIsSavingAttendance(false);
+      return;
+    }
+
+    setIsSavingAttendance(false);
+    setShowSaveModal(false);
+
+    await refreshRecords();
+    setScanStatus(`${markedCount} student${markedCount === 1 ? "" : "s"} marked absent.`);
+  };
 
   const recordToStudent = (record) => ({
     id_number: record.students?.id_number ?? record.student_id_number,
@@ -366,7 +407,10 @@ function StatusAttendance({
           <h3 className="text-lg font-bold">Attendance Status - Day {day}</h3>
           <button
             type="button"
-            onClick={() => {}}
+            onClick={() => {
+              setSaveError("");
+              setShowSaveModal(true);
+            }}
             className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
             Save
@@ -466,6 +510,43 @@ function StatusAttendance({
           </table>
         </div>
       </div>
+
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+          <div className="w-full max-w-sm overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="px-6 py-5">
+              <h3 className="text-xl font-bold text-slate-950">Save Attendance</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                {noRecordCount} student
+                {noRecordCount === 1 ? "" : "s"} with no record will be marked absent.
+              </p>
+              {saveError && (
+                <p className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+                  {saveError}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3 border-t border-slate-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowSaveModal(false)}
+                disabled={isSavingAttendance}
+                className="flex-1 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAttendance}
+                disabled={isSavingAttendance}
+                className="flex-1 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSavingAttendance ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

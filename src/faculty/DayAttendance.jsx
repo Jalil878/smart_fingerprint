@@ -3,16 +3,12 @@ import { supabase } from "../supabaseClient";
 
 function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
   const [records, setRecords] = useState([]);
+  const [dayTotals, setDayTotals] = useState([]);
   const [days, setDays] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
-  const [sessionStudents, setSessionStudents] = useState([]);
-  const [isStudentsLoading, setIsStudentsLoading] = useState(false);
-  const [studentsError, setStudentsError] = useState("");
-
   const formatTime = (time) => {
     if (!time) return "";
     const [h, m] = time.split(":");
@@ -30,7 +26,7 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
       const { data, error } = await supabase
         .from("attendance_records")
         .select("*, students!inner(first_name, middle_name, last_name, id_number, course)")
-        .eq("attendance_id", attendance.id);
+        .eq("attendance_session_id", attendance.id);
 
       setIsLoading(false);
 
@@ -58,37 +54,33 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
       if (data !== null) setTotalStudents(data);
     };
 
+    const loadDayTotals = async () => {
+      const { data, error } = await supabase.rpc("get_session_day_totals", {
+        p_session_id: attendance.id,
+      });
+
+      if (!error) {
+        setDayTotals(data || []);
+      }
+    };
+
     loadRecords();
     loadDays();
+    loadDayTotals();
     loadTotalStudents();
   }, [attendance.id, dayRefreshKey]);
 
   const presentCount = records.filter((r) => r.status === "present").length;
+  const lateCount = records.filter((r) => r.status === "late").length;
   const absentCount = records.filter((r) => r.status === "absent").length;
 
-  const openStudentsModal = async () => {
-    setIsStudentsModalOpen(true);
-    setStudentsError("");
-    setIsStudentsLoading(true);
-
-    const { data, error } = await supabase.rpc("get_session_students", {
-      p_session_id: attendance.id,
-    });
-
-    if (error) {
-      setStudentsError(error.message);
-      setIsStudentsLoading(false);
-      return;
-    }
-
-    setSessionStudents(data || []);
-    setIsStudentsLoading(false);
-  };
-
-  const closeStudentsModal = () => {
-    setIsStudentsModalOpen(false);
-    setSessionStudents([]);
-    setStudentsError("");
+  const dayStats = (day) => {
+    const totals = dayTotals.find((t) => t.day === day) || {};
+    return {
+      present: totals.present || 0,
+      late: totals.late || 0,
+      absent: totals.absent || 0,
+    };
   };
 
   return (
@@ -124,21 +116,21 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Room</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{attendance.room || "N/A"}</p>
         </div>
-        <button
-          type="button"
-          onClick={openStudentsModal}
-          className="rounded-lg p-4 text-left transition hover:bg-slate-50"
-        >
+        <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Students</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{totalStudents}</p>
-        </button>
+        </div>
       </div>
 
       {!isLoading && records.length > 0 && (
-        <div className="mb-6 grid gap-4 md:grid-cols-2">
+        <div className="mb-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
             <p className="text-sm font-medium text-emerald-700">Present</p>
             <p className="mt-2 text-3xl font-bold text-emerald-600">{presentCount}</p>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+            <p className="text-sm font-medium text-amber-700">Late</p>
+            <p className="mt-2 text-3xl font-bold text-amber-600">{lateCount}</p>
           </div>
           <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
             <p className="text-sm font-medium text-rose-700">Absent</p>
@@ -157,21 +149,38 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
         )}
 
         {days.length > 0 ? (
-          <div className="px-5 py-4 text-sm font-medium">
-            {days.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => onSelectDay(d)}
-                className={`block w-full rounded-md px-3 py-2 text-left transition ${
-                  selectedDay === d
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                Day {d}
-              </button>
-            ))}
+          <div className="px-5 py-4 text-sm">
+            {days.map((d) => {
+              const stats = dayStats(d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => onSelectDay(d)}
+                  className={`mb-2 flex w-full items-center justify-between gap-4 rounded-md px-3 py-2 text-left transition last:mb-0 ${
+                    selectedDay === d
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <span className="font-semibold">Day {d}</span>
+                  <span className="flex items-center gap-3 text-xs font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      <span className={`h-2 w-2 rounded-full ${selectedDay === d ? "bg-emerald-400" : "bg-emerald-500"}`} />
+                      P: {stats.present}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className={`h-2 w-2 rounded-full ${selectedDay === d ? "bg-amber-400" : "bg-amber-500"}`} />
+                      L: {stats.late}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className={`h-2 w-2 rounded-full ${selectedDay === d ? "bg-rose-400" : "bg-rose-500"}`} />
+                      A: {stats.absent}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         ) : null}
 
@@ -214,100 +223,6 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
         </div>
         )}
       </div>
-
-      {isStudentsModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="students-list-title"
-        >
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="border-b border-slate-200 px-6 py-5">
-              <h3 id="students-list-title" className="text-xl font-bold">
-                Students - {attendance.subject_name}
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Section {attendance.section}
-              </p>
-            </div>
-
-            <div className="max-h-[60vh] overflow-y-auto">
-              {isStudentsLoading ? (
-                <p className="px-6 py-6 text-sm font-medium text-slate-500">
-                  Loading students...
-                </p>
-              ) : studentsError ? (
-                <p className="px-6 py-6 text-sm font-medium text-rose-700">
-                  {studentsError}
-                </p>
-              ) : sessionStudents.length === 0 ? (
-                <p className="px-6 py-6 text-sm font-medium text-slate-500">
-                  No students enrolled in this session.
-                </p>
-              ) : (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-6 py-3 font-semibold">Student Name</th>
-                      <th className="px-6 py-3 font-semibold">Course</th>
-                      <th className="px-6 py-3 font-semibold">ID Number</th>
-                      <th className="px-6 py-3 font-semibold">Fingerprint</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {sessionStudents.map((student) => {
-                      const fullName = [
-                        student.first_name,
-                        student.middle_name,
-                        student.last_name,
-                      ]
-                        .filter(Boolean)
-                        .join(" ");
-                      const hasFingerprint = Boolean(student.fingerprint_id);
-
-                      return (
-                        <tr key={student.id_number}>
-                          <td className="px-6 py-3.5 font-semibold text-slate-950">
-                            {fullName}
-                          </td>
-                          <td className="px-6 py-3.5 text-slate-600">
-                            {student.course || "\u2014"}
-                          </td>
-                          <td className="px-6 py-3.5 text-slate-600">
-                            {student.id_number}
-                          </td>
-                          <td className="px-6 py-3.5">
-                            {hasFingerprint ? (
-                              <span className="inline-block rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                Enrolled
-                              </span>
-                            ) : (
-                              <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                                Not Enrolled
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-6 py-4">
-              <button
-                type="button"
-                onClick={closeStudentsModal}
-                className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
