@@ -61,6 +61,8 @@ using (
   )
 );
 
+drop function if exists public.add_day_to_session(uuid);
+
 create or replace function public.add_day_to_session(p_session_id uuid)
 returns integer
 language plpgsql
@@ -102,17 +104,23 @@ $$;
 revoke all on function public.add_day_to_session(uuid) from public;
 grant execute on function public.add_day_to_session(uuid) to authenticated;
 
+drop function if exists public.get_session_days(uuid);
+
 create or replace function public.get_session_days(p_session_id uuid)
-returns table (day integer)
+returns table (
+  day integer,
+  created_at timestamp with time zone
+)
 language plpgsql
 security definer
 set search_path = public
 as $$
 begin
   return query
-  select distinct dayattendance.day
+  select dayattendance.day, min(dayattendance.created_at)::timestamp with time zone as created_at
   from public.dayattendance
   where dayattendance.attendance_session_id = p_session_id
+  group by dayattendance.day
   order by dayattendance.day;
 end;
 $$;

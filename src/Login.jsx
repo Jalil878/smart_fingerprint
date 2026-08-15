@@ -61,7 +61,7 @@ function Login({ onSignIn, onShowSignup }) {
     const approvedTable = selectedRole === "faculty" ? "faculty" : "students";
     const approvedColumns =
       selectedRole === "faculty"
-        ? "first_name, middle_name, last_name, id_number, email"
+        ? "first_name, middle_name, last_name, id_number, email, status_device"
         : "first_name, middle_name, last_name, id_number, course, fingerprint_id, email";
 
     const { data: approvedUser, error: approvedError } = await supabase

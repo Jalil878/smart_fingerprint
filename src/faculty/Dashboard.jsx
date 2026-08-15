@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import CreateAttendance from "./CreateAttendance";
 import DayAttendance from "./DayAttendance";
@@ -62,6 +62,16 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
   const [selectedDay, setSelectedDay] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
+  const scanMessageTimeout = useRef(null);
+  const showScanMessage = (message) => {
+    setScanMessage(message);
+    if (scanMessageTimeout.current) {
+      clearTimeout(scanMessageTimeout.current);
+    }
+    scanMessageTimeout.current = setTimeout(() => {
+      setScanMessage("");
+    }, 5000);
+  };
   const [showStudentsList, setShowStudentsList] = useState(false);
   const [sessionStudents, setSessionStudents] = useState([]);
   const [isStudentsLoading, setIsStudentsLoading] = useState(false);
@@ -429,7 +439,7 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
             day={selectedDay}
             onBack={handleBackToDayAttendance}
             isScanning={isScanning}
-            onScanMessage={setScanMessage}
+            onScanMessage={showScanMessage}
           />
         )}
 
@@ -522,16 +532,6 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
                   ),
                 },
                 {
-                  key: "profile",
-                  label: "My Profile",
-                  icon: (
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  ),
-                },
-                {
                   key: "create attendance",
                   label: "Create",
                   icon: (
@@ -539,6 +539,16 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
                       <circle cx="12" cy="12" r="9" />
                       <line x1="12" y1="8" x2="12" y2="16" />
                       <line x1="8" y1="12" x2="16" y2="12" />
+                    </svg>
+                  ),
+                },
+                {
+                  key: "profile",
+                  label: "My Profile",
+                  icon: (
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
                     </svg>
                   ),
                 },
@@ -559,11 +569,11 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
                   }
                 } else if (activePage === "status attendance") {
                   if (key === "start") {
-                    setScanMessage("Starting fingerprint attendance...");
+                    showScanMessage("Starting fingerprint attendance...");
                     setIsScanning(true);
                   } else if (key === "stop") {
                     setIsScanning(false);
-                    setScanMessage("Fingerprint attendance stopped.");
+                    showScanMessage("Fingerprint attendance stopped.");
                   }
                 } else {
                   if (key === "profile") {

@@ -1,11 +1,74 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { pingEsp32, setEsp32BaseUrl } from "../lib/esp32Api";
 
 function MyProfile({ profile, onProfileUpdate }) {
   const fullName =
     [profile?.first_name, profile?.middle_name, profile?.last_name]
       .filter(Boolean)
       .join(" ") || "Faculty";
+
+  const [statusDevice, setStatusDevice] = useState(
+    profile?.status_device || "offline",
+  );
+  const [device, setDevice] = useState(null);
+  const [deviceStatus, setDeviceStatus] = useState("loading");
+  const [deviceChecked, setDeviceChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadData = async () => {
+      const { data: statusData, error: statusError } = await supabase
+        .from("faculty")
+        .select("status_device")
+        .eq("id", profile?.id ?? "")
+        .maybeSingle();
+
+      if (!cancelled && !statusError && statusData?.status_device) {
+        setStatusDevice(statusData.status_device);
+      }
+
+      const { data: deviceData, error: deviceError } = await supabase.rpc(
+        "get_fingerprint_device",
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const deviceRow = deviceData?.[0] ?? null;
+
+      if (deviceError || !deviceRow?.device_url) {
+        setDevice(deviceRow);
+        setDeviceStatus("none");
+        setDeviceChecked(true);
+        return;
+      }
+
+      setDevice(deviceRow);
+      setEsp32BaseUrl(deviceRow.device_url);
+
+      let status = "offline";
+      try {
+        await pingEsp32();
+        status = "online";
+      } catch {
+        status = "offline";
+      }
+
+      if (!cancelled) {
+        setDeviceStatus(status);
+        setDeviceChecked(true);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
 
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -182,14 +245,74 @@ function MyProfile({ profile, onProfileUpdate }) {
           </div>
         </div>
 
+        <div className="border-t border-slate-200 px-6 py-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              Fingerprint Device
+            </p>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${
+                statusDevice === "online"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-rose-50 text-rose-700"
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  statusDevice === "online"
+                    ? "bg-emerald-500"
+                    : "bg-rose-500"
+                }`}
+              />
+              {statusDevice === "online" ? "Enrolled" : "Not Enrolled"}
+            </span>
+          </div>
+
+          <div className="grid gap-1 sm:grid-cols-[180px_1fr]">
+            <p className="text-sm font-semibold text-slate-500">Device Name</p>
+            <p className="text-sm font-semibold text-slate-950">
+              {device?.device_name || "\u2014"}
+            </p>
+          </div>
+
+          <div className="mt-3 grid gap-1 sm:grid-cols-[180px_1fr]">
+            <p className="text-sm font-semibold text-slate-500">Device URL</p>
+            <p className="break-all font-mono text-sm text-slate-950">
+              {device?.device_url || "\u2014"}
+            </p>
+          </div>
+
+          <div className="mt-3 grid gap-1 sm:grid-cols-[180px_1fr]">
+            <p className="text-sm font-semibold text-slate-500">Device Status</p>
+            <p
+              className={`text-sm font-semibold ${
+                deviceStatus === "online"
+                  ? "text-emerald-600"
+                  : "text-rose-600"
+              }`}
+            >
+              {deviceStatus === "online"
+                ? "Connected"
+                : deviceStatus === "offline"
+                  ? "Offline"
+                    : deviceStatus === "loading"
+                    ? "Checking\u2026"
+                    : "Offline"}
+            </p>
+          </div>
+
+          {deviceChecked && (
+            <p className="mt-4 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {statusDevice === "online"
+                ? deviceStatus === "online"
+                  ? "Your fingerprint is enrolled on the device and the device is connected. You can use fingerprint scanning to record attendance."
+                  : "Your fingerprint is enrolled on the device, but the device is currently offline. You cannot use fingerprint scanning while it is offline."
+                : "Your fingerprint is not enrolled on the device. You cannot use fingerprint scanning; record attendance manually instead."}
+            </p>
+          )}
+        </div>
+
         <div className="flex flex-wrap gap-3 border-t border-slate-200 px-6 py-4">
-          <button
-            type="button"
-            onClick={openEditProfile}
-            className="rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Edit Profile
-          </button>
           <button
             type="button"
             onClick={openChangePassword}

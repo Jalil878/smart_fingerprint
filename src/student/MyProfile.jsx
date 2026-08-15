@@ -222,13 +222,6 @@ function MyProfile({ profile, onProfileUpdate }) {
         <div className="flex flex-wrap gap-3 border-t border-slate-200 px-6 py-4">
           <button
             type="button"
-            onClick={openEditProfile}
-            className="rounded-md border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Edit Profile
-          </button>
-          <button
-            type="button"
             onClick={openChangePassword}
             className="rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
           >

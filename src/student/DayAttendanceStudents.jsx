@@ -117,7 +117,10 @@ function DayAttendanceStudents({ classItem, onBack }) {
                   <p className="font-semibold text-slate-950">Day {record.day}</p>
                   {record.date_time_attend && (
                     <p className="mt-0.5 text-sm text-slate-400">
-                      {new Date(record.date_time_attend).toLocaleString()}
+                      {new Date(record.date_time_attend).toLocaleString(
+                        undefined,
+                        { dateStyle: "short", timeStyle: "short" },
+                      )}
                     </p>
                   )}
                 </div>

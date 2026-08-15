@@ -23,9 +23,30 @@ function StatusAttendance({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSavingAttendance, setIsSavingAttendance] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [timerMinutes, setTimerMinutes] = useState(15);
+  const [secondsLeft, setSecondsLeft] = useState(15 * 60);
+  const [isEditingTimer, setIsEditingTimer] = useState(false);
+  const [timerInput, setTimerInput] = useState("15");
+  const [timerRunning, setTimerRunning] = useState(false);
   const scanningRef = useRef(false);
   const recordsRef = useRef([]);
   const sessionStudentsRef = useRef([]);
+  const timerMinutesRef = useRef(timerMinutes);
+  const secondsLeftRef = useRef(secondsLeft);
+  const timerEnabledRef = useRef(timerEnabled);
+
+  useEffect(() => {
+    timerMinutesRef.current = timerMinutes;
+  }, [timerMinutes]);
+
+  useEffect(() => {
+    secondsLeftRef.current = secondsLeft;
+  }, [secondsLeft]);
+
+  useEffect(() => {
+    timerEnabledRef.current = timerEnabled;
+  }, [timerEnabled]);
 
   useEffect(() => {
     recordsRef.current = records;
@@ -241,12 +262,16 @@ function StatusAttendance({
             continue;
           }
 
+          const isLate =
+            timerEnabledRef.current && secondsLeftRef.current === 0;
+
           const { error: insertError } = await supabase.rpc(
             "record_attendance",
             {
               p_session_id: attendance.id,
               p_day: day,
               p_student_id_number: matchedStudent.id_number,
+              p_status: isLate ? "late" : "present",
             },
           );
 
@@ -262,8 +287,9 @@ function StatusAttendance({
           ]
             .filter(Boolean)
             .join(" ");
-          setScanStatus(`${fullName} marked present.`);
-          onScanMessage?.(`${fullName} marked present.`);
+          const statusLabel = isLate ? "late" : "present";
+          setScanStatus(`${fullName} marked ${statusLabel}.`);
+          onScanMessage?.(`${fullName} marked ${statusLabel}.`);
 
           await refreshRecords();
         } catch (scanError) {
@@ -306,6 +332,53 @@ function StatusAttendance({
   const lateCount = records.filter((r) => r.status === "late").length;
   const absentCount = records.filter((r) => r.status === "absent").length;
   const noRecordCount = sessionStudents.length - (presentCount + lateCount + absentCount);
+
+  const handleToggleTimer = (enabled) => {
+    setTimerEnabled(enabled);
+    if (!enabled) {
+      setIsEditingTimer(false);
+    }
+    if (enabled) {
+      setSecondsLeft(timerMinutes * 60);
+    }
+  };
+
+  const confirmTimerEdit = () => {
+    const parsed = parseInt(timerInput, 10);
+    const minutes = Number.isFinite(parsed) && parsed > 0 ? parsed : 15;
+    setTimerMinutes(minutes);
+    setSecondsLeft(minutes * 60);
+    setIsEditingTimer(false);
+  };
+
+  useEffect(() => {
+    if (!isScanning) {
+      setTimerRunning(false);
+      return;
+    }
+
+    setTimerRunning(true);
+    setSecondsLeft(timerMinutesRef.current * 60);
+  }, [isScanning]);
+
+  useEffect(() => {
+    if (!timerRunning || !timerEnabled || secondsLeft <= 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSecondsLeft((current) => (current <= 1 ? 0 : current - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerRunning, timerEnabled, secondsLeft]);
+
+  useEffect(() => {
+    if (timerRunning && timerEnabled && secondsLeft === 0) {
+      setScanStatus("Timer ended. New scans will be marked late.");
+    }
+  }, [timerRunning, timerEnabled, secondsLeft]);
+
 
   const handleSaveAttendance = async () => {
     setSaveError("");
@@ -403,8 +476,60 @@ function StatusAttendance({
       </div>
 
       <div className="overflow-hidden rounded-lg bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h3 className="text-lg font-bold">Attendance Status - Day {day}</h3>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-bold">Attendance Status</h3>
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={timerEnabled}
+                onChange={(event) => handleToggleTimer(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+              />
+              Timer
+            </label>
+
+            {isEditingTimer ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  value={timerInput}
+                  onChange={(event) => setTimerInput(event.target.value)}
+                  className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-center text-sm font-semibold outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                />
+                <span className="text-sm text-slate-500">min</span>
+                <button
+                  type="button"
+                  onClick={confirmTimerEdit}
+                  className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                >
+                  OK
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={!timerEnabled}
+                onClick={() => {
+                  if (!timerEnabled) return;
+                  setTimerInput(String(timerMinutes));
+                  setIsEditingTimer(true);
+                }}
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm font-bold tabular-nums text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+                title={
+                  timerEnabled
+                    ? "Click to edit the timer"
+                    : "Check the Timer box to enable the timer"
+                }
+              >
+                {timerEnabled
+                  ? `${String(Math.floor(secondsLeft / 60)).padStart(2, "0")}:${String(secondsLeft % 60).padStart(2, "0")}`
+                  : `${String(timerMinutes).padStart(2, "0")}:00`}
+              </button>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={() => {

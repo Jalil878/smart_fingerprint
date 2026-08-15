@@ -6,7 +6,6 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
   const [dayTotals, setDayTotals] = useState([]);
   const [days, setDays] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
-  const [selectedDay, setSelectedDay] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const formatTime = (time) => {
@@ -43,7 +42,7 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
         p_session_id: attendance.id,
       });
       if (data) {
-        setDays(data.map((d) => d.day));
+        setDays(data || []);
       }
     };
 
@@ -148,33 +147,36 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
           <p className="px-5 py-6 text-sm font-medium text-slate-500">Loading day records...</p>
         )}
 
-        {days.length > 0 ? (
-          <div className="px-5 py-4 text-sm">
-            {days.map((d) => {
-              const stats = dayStats(d);
+        {days.length > 0 && (
+          <div className="divide-y divide-slate-200">
+            {days.map((item) => {
+              const stats = dayStats(item.day);
               return (
                 <button
-                  key={d}
+                  key={item.day}
                   type="button"
-                  onClick={() => onSelectDay(d)}
-                  className={`mb-2 flex w-full items-center justify-between gap-4 rounded-md px-3 py-2 text-left transition last:mb-0 ${
-                    selectedDay === d
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
+                  onClick={() => onSelectDay(item.day)}
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
-                  <span className="font-semibold">Day {d}</span>
-                  <span className="flex items-center gap-3 text-xs font-medium">
-                    <span className="inline-flex items-center gap-1">
-                      <span className={`h-2 w-2 rounded-full ${selectedDay === d ? "bg-emerald-400" : "bg-emerald-500"}`} />
+                  <div>
+                    <p className="font-semibold text-slate-950">Day {item.day}</p>
+                    {item.created_at && (
+                      <p className="mt-0.5 text-sm text-slate-400">
+                        {new Date(item.created_at).toLocaleString(undefined, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  <span className="flex items-center gap-2 text-xs font-semibold">
+                    <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-emerald-700">
                       P: {stats.present}
                     </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className={`h-2 w-2 rounded-full ${selectedDay === d ? "bg-amber-400" : "bg-amber-500"}`} />
+                    <span className="rounded-md bg-amber-50 px-2.5 py-1 text-amber-700">
                       L: {stats.late}
                     </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className={`h-2 w-2 rounded-full ${selectedDay === d ? "bg-rose-400" : "bg-rose-500"}`} />
+                    <span className="rounded-md bg-rose-50 px-2.5 py-1 text-rose-700">
                       A: {stats.absent}
                     </span>
                   </span>
@@ -182,7 +184,7 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
               );
             })}
           </div>
-        ) : null}
+        )}
 
         {!isLoading && records.length > 0 && (
           <div className="overflow-x-auto">

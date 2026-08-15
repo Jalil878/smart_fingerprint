@@ -706,6 +706,8 @@ function ManageDevice() {
         )}
       </div>
 
+      {/* Fingerprints on Device section (commented out) */}
+      {/*
       <div className="mt-8 overflow-hidden rounded-lg bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -764,6 +766,7 @@ function ManageDevice() {
           )}
         </div>
       </div>
+      */}
 
       {isAddModalOpen && (
         <div

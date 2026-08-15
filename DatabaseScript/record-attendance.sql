@@ -1,12 +1,15 @@
--- Inserts an attendance record for a student marked present via the
--- fingerprint scanner. Security definer so faculty can write records
--- without depending on RLS policy subqueries on the attendance_records table.
+-- Inserts an attendance record for a student scanned via the fingerprint
+-- scanner. Scans before the timer expires are marked 'present'; scans after
+-- the timer reaches zero are marked 'late'. Security definer so faculty can
+-- write records without depending on RLS policy subqueries on the
+-- attendance_records table.
 drop function if exists public.record_attendance(uuid, integer, bigint);
 
 create or replace function public.record_attendance(
   p_session_id uuid,
   p_day integer,
-  p_student_id_number bigint
+  p_student_id_number bigint,
+  p_status text default 'present'
 )
 returns void
 language plpgsql
@@ -17,6 +20,10 @@ declare
   v_faculty_id_number bigint;
   v_is_enrolled boolean;
 begin
+  if p_status not in ('present', 'late') then
+    raise exception 'Invalid attendance status.';
+  end if;
+
   select faculty.id_number
   into v_faculty_id_number
   from public.faculty
@@ -63,7 +70,7 @@ begin
     p_session_id,
     v_faculty_id_number,
     p_student_id_number,
-    'present',
+    p_status,
     now()
   )
   on conflict (day, attendance_session_id, student_id_number)
@@ -71,5 +78,5 @@ begin
 end;
 $$;
 
-revoke all on function public.record_attendance(uuid, integer, bigint) from public;
-grant execute on function public.record_attendance(uuid, integer, bigint) to authenticated;
+revoke all on function public.record_attendance(uuid, integer, bigint, text) from public;
+grant execute on function public.record_attendance(uuid, integer, bigint, text) to authenticated;
