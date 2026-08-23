@@ -10,7 +10,8 @@ returns table (
   middle_name text,
   last_name text,
   course text,
-  fingerprint_id text
+  fingerprint_id text,
+  status text
 )
 language plpgsql
 security definer
@@ -24,7 +25,8 @@ begin
     students.middle_name,
     students.last_name,
     students.course,
-    students.fingerprint_id
+    students.fingerprint_id,
+    attendance_session_students.status
   from public.attendance_session_students
   join public.students on students.id_number = attendance_session_students.student_id_number
   where attendance_session_students.attendance_session_id = p_session_id

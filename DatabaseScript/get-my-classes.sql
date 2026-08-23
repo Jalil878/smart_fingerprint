@@ -12,7 +12,8 @@ returns table (
   room text,
   created_at timestamp with time zone,
   day integer,
-  status text
+  status text,
+  enrollment_status text
 )
 language plpgsql
 security definer
@@ -39,7 +40,8 @@ begin
     attendance_sessions.room,
     attendance_sessions.created_at,
     coalesce(latest_record.day, 0)::integer as day,
-    coalesce(latest_record.status, 'absent')::text as status
+    coalesce(latest_record.status, 'absent')::text as status,
+    coalesce(attendance_session_students.status, 'active')::text as enrollment_status
   from public.attendance_session_students
   join public.attendance_sessions
     on attendance_sessions.id = attendance_session_students.attendance_session_id

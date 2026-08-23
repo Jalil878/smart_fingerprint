@@ -41,6 +41,27 @@ function StudentDashboard({ profile, onLogout, onProfileUpdate }) {
     return `${hour12}:${m} ${ampm}`;
   };
 
+  const normalizeEnrollmentStatus = (value) => {
+    const v = String(value || "active").toLowerCase().trim();
+    if (v === "warning") return "warning";
+    if (v === "drop" || v === "dropped") return "drop";
+    return "active";
+  };
+
+  const enrollmentStatusLabel = (value) => {
+    const n = normalizeEnrollmentStatus(value);
+    if (n === "warning") return "Warning";
+    if (n === "drop") return "Drop";
+    return "Active";
+  };
+
+  const enrollmentStatusStyle = (value) => {
+    const n = normalizeEnrollmentStatus(value);
+    if (n === "active") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (n === "warning") return "bg-amber-50 text-amber-700 border-amber-200";
+    return "bg-rose-50 text-rose-700 border-rose-200";
+  };
+
   const navItems = [
     {
       key: "dashboard",
@@ -137,7 +158,7 @@ function StudentDashboard({ profile, onLogout, onProfileUpdate }) {
                       setSelectedClass(item);
                       setActivePage("day attendance");
                     }}
-                    className="grid w-full gap-4 px-5 py-4 text-left ring-slate-900 transition hover:bg-slate-50 focus:outline-none focus:ring-2"
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left ring-slate-900 transition hover:bg-slate-50 focus:outline-none focus:ring-2"
                   >
                     <div>
                       <h4 className="font-semibold text-slate-950">
@@ -152,6 +173,11 @@ function StudentDashboard({ profile, onLogout, onProfileUpdate }) {
                         </p>
                       )}
                     </div>
+                    <span
+                      className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${enrollmentStatusStyle(item.enrollment_status)}`}
+                    >
+                      {enrollmentStatusLabel(item.enrollment_status)}
+                    </span>
                   </button>
                 ))}
               </div>

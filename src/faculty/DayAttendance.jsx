@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
 function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
-  const [records, setRecords] = useState([]);
   const [dayTotals, setDayTotals] = useState([]);
   const [days, setDays] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
   const formatTime = (time) => {
     if (!time) return "";
     const [h, m] = time.split(":");
@@ -18,60 +17,26 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
   };
 
   useEffect(() => {
-    const loadRecords = async () => {
+    const loadAll = async () => {
       setError("");
       setIsLoading(true);
 
-      const { data, error } = await supabase
-        .from("attendance_records")
-        .select("*, students!inner(first_name, middle_name, last_name, id_number, course)")
-        .eq("attendance_session_id", attendance.id);
+      const [{ data: daysData }, { data: countData }, { data: totalsData }] =
+        await Promise.all([
+          supabase.rpc("get_session_days", { p_session_id: attendance.id }),
+          supabase.rpc("count_session_students", { p_session_id: attendance.id }),
+          supabase.rpc("get_session_day_totals", { p_session_id: attendance.id }),
+        ]);
+
+      if (daysData) setDays(daysData || []);
+      if (countData !== null) setTotalStudents(countData);
+      if (totalsData) setDayTotals(totalsData || []);
 
       setIsLoading(false);
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      setRecords(data || []);
     };
 
-    const loadDays = async () => {
-      const { data } = await supabase.rpc("get_session_days", {
-        p_session_id: attendance.id,
-      });
-      if (data) {
-        setDays(data || []);
-      }
-    };
-
-    const loadTotalStudents = async () => {
-      const { data } = await supabase.rpc("count_session_students", {
-        p_session_id: attendance.id,
-      });
-      if (data !== null) setTotalStudents(data);
-    };
-
-    const loadDayTotals = async () => {
-      const { data, error } = await supabase.rpc("get_session_day_totals", {
-        p_session_id: attendance.id,
-      });
-
-      if (!error) {
-        setDayTotals(data || []);
-      }
-    };
-
-    loadRecords();
-    loadDays();
-    loadDayTotals();
-    loadTotalStudents();
+    loadAll();
   }, [attendance.id, dayRefreshKey]);
-
-  const presentCount = records.filter((r) => r.status === "present").length;
-  const lateCount = records.filter((r) => r.status === "late").length;
-  const absentCount = records.filter((r) => r.status === "absent").length;
 
   const dayStats = (day) => {
     const totals = dayTotals.find((t) => t.day === day) || {};
@@ -121,23 +86,6 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
         </div>
       </div>
 
-      {!isLoading && records.length > 0 && (
-        <div className="mb-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
-            <p className="text-sm font-medium text-emerald-700">Present</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-600">{presentCount}</p>
-          </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
-            <p className="text-sm font-medium text-amber-700">Late</p>
-            <p className="mt-2 text-3xl font-bold text-amber-600">{lateCount}</p>
-          </div>
-          <div className="rounded-lg border border-rose-200 bg-rose-50 p-5">
-            <p className="text-sm font-medium text-rose-700">Absent</p>
-            <p className="mt-2 text-3xl font-bold text-rose-600">{absentCount}</p>
-          </div>
-        </div>
-      )}
-
       <div className="overflow-hidden rounded-lg bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
           <h3 className="text-lg font-bold">Day of Attendance</h3>
@@ -184,45 +132,6 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
               );
             })}
           </div>
-        )}
-
-        {!isLoading && records.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-5 py-3 font-semibold">Student Name</th>
-                  <th className="px-5 py-3 font-semibold">ID Number</th>
-                  <th className="px-5 py-3 font-semibold">Course</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {records.map((record) => {
-                  const s = record.students;
-                  const fullName = [s?.first_name, s?.middle_name, s?.last_name].filter(Boolean).join(" ");
-                  return (
-                    <tr key={record.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-4 font-semibold text-slate-950">{fullName}</td>
-                      <td className="px-5 py-4 text-slate-600">{s?.id_number}</td>
-                      <td className="px-5 py-4 text-slate-600">{s?.course || "—"}</td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-block rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
-                            record.status === "present"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-rose-50 text-rose-700"
-                          }`}
-                        >
-                          {record.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-          </table>
-        </div>
         )}
       </div>
     </div>

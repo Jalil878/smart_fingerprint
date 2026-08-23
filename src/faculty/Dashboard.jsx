@@ -4,6 +4,8 @@ import CreateAttendance from "./CreateAttendance";
 import DayAttendance from "./DayAttendance";
 import StatusAttendance from "./StatusAttendance";
 import MyProfile from "./MyProfile";
+import ListStudent from "./ListStudent";
+import EditSubject from "./EditSubject";
 
 function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
   const [activePage, setActivePage] = useState("dashboard");
@@ -72,7 +74,6 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
       setScanMessage("");
     }, 5000);
   };
-  const [showStudentsList, setShowStudentsList] = useState(false);
   const [sessionStudents, setSessionStudents] = useState([]);
   const [isStudentsLoading, setIsStudentsLoading] = useState(false);
   const [studentsListError, setStudentsListError] = useState("");
@@ -83,7 +84,6 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
   const [addStudentsSearchTerm, setAddStudentsSearchTerm] = useState("");
   const [selectedAddStudentIds, setSelectedAddStudentIds] = useState([]);
   const [isAddingStudents, setIsAddingStudents] = useState(false);
-  const [showEditSubject, setShowEditSubject] = useState(false);
   const [editSubjectData, setEditSubjectData] = useState({
     subject_name: "",
     section: "",
@@ -128,7 +128,7 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
   const openStudentsList = async () => {
     if (!selectedAttendance) return;
 
-    setShowStudentsList(true);
+    setActivePage("list students");
     setStudentsListError("");
     setIsStudentsLoading(true);
 
@@ -144,12 +144,6 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
     }
 
     setSessionStudents(data || []);
-  };
-
-  const closeStudentsList = () => {
-    setShowStudentsList(false);
-    setSessionStudents([]);
-    setStudentsListError("");
   };
 
   const openAddStudents = async () => {
@@ -237,7 +231,7 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
       room: selectedAttendance.room || "",
     });
     setEditSubjectError("");
-    setShowEditSubject(true);
+    setActivePage("edit subject");
   };
 
   const handleEditSubject = async () => {
@@ -294,7 +288,7 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
         item.id === updatedAttendance.id ? updatedAttendance : item
       )
     );
-    setShowEditSubject(false);
+    setActivePage("day attendance");
   };
 
   const normalizedAddStudentsSearchTerm =
@@ -443,6 +437,38 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
           />
         )}
 
+        {activePage === "list students" && selectedAttendance && (
+          <ListStudent
+            attendance={selectedAttendance}
+            onBack={handleBackToDayAttendance}
+            sessionStudents={sessionStudents}
+            onAddStudents={openAddStudents}
+            onRemoveStudent={closeAddStudents}
+            isAllStudentsLoading={isAllStudentsLoading}
+            allStudentsError={allStudentsError}
+            addStudentsSearchTerm={addStudentsSearchTerm}
+            setAddStudentsSearchTerm={setAddStudentsSearchTerm}
+            selectedAddStudentIds={selectedAddStudentIds}
+            isAddingStudents={isAddingStudents}
+            handleAddStudents={handleAddStudents}
+            toggleAddStudent={toggleAddStudent}
+            filteredAddStudents={filteredAddStudents}
+            showAddStudents={showAddStudents}
+          />
+        )}
+
+        {activePage === "edit subject" && selectedAttendance && (
+          <EditSubject
+            attendance={selectedAttendance}
+            onBack={handleBackToDayAttendance}
+            editSubjectData={editSubjectData}
+            setEditSubjectData={setEditSubjectData}
+            editSubjectError={editSubjectError}
+            isSavingEditSubject={isSavingEditSubject}
+            handleEditSubject={handleEditSubject}
+          />
+        )}
+
         {activePage === "create attendance" && (
           <CreateAttendance
             onGoToDashboard={handleGoToDashboard}
@@ -455,7 +481,8 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
         )}
       </section>
 
-      <nav className="animate-fade-in-up fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white px-4 pb-3 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]" style={{ animationDelay: '0.3s' }}>
+      {activePage !== "list students" && activePage !== "edit subject" && (
+        <nav className="animate-fade-in-up fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white px-4 pb-3 pt-2 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]" style={{ animationDelay: '0.3s' }}>
         {scanMessage && (
           <p className="mb-2 rounded-md bg-slate-900 px-3 py-2 text-center text-xs font-semibold text-white">
             {scanMessage}
@@ -483,7 +510,9 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
                   ),
                 },
               ]
-            : activePage === "day attendance"
+            : activePage === "day attendance" ||
+              activePage === "list students" ||
+              activePage === "edit subject"
             ? [
                 {
                   key: "list students",
@@ -558,7 +587,11 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
               key={key}
               type="button"
               onClick={() => {
-                if (activePage === "day attendance") {
+                if (
+                  activePage === "day attendance" ||
+                  activePage === "list students" ||
+                  activePage === "edit subject"
+                ) {
                   if (key === "list students") {
                     openStudentsList();
                   } else if (key === "edit subject") {
@@ -597,7 +630,8 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
             </button>
           ))}
         </div>
-      </nav>
+        </nav>
+      )}
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
@@ -626,349 +660,6 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
                 className="flex-1 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showStudentsList && selectedAttendance && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="students-list-title"
-        >
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div
-              className={`flex transition-transform duration-300 ease-in-out ${
-                showAddStudents ? "-translate-x-full" : "translate-x-0"
-              }`}
-            >
-              <div className="w-full shrink-0">
-                <div className="border-b border-slate-200 px-6 py-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 id="students-list-title" className="text-xl font-bold">
-                        Students - {selectedAttendance.subject_name}
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Section {selectedAttendance.section}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={openAddStudents}
-                      className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                      Add Students
-                    </button>
-                  </div>
-                </div>
-
-                <div className="max-h-[60vh] overflow-y-auto">
-                  {isStudentsLoading ? (
-                    <p className="px-6 py-6 text-sm font-medium text-slate-500">
-                      Loading students...
-                    </p>
-                  ) : studentsListError ? (
-                    <p className="px-6 py-6 text-sm font-medium text-rose-700">
-                      {studentsListError}
-                    </p>
-                  ) : sessionStudents.length === 0 ? (
-                    <p className="px-6 py-6 text-sm font-medium text-slate-500">
-                      No students enrolled in this session.
-                    </p>
-                  ) : (
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                        <tr>
-                          <th className="px-6 py-3 font-semibold">Student Name</th>
-                          <th className="px-6 py-3 font-semibold">Course</th>
-                          <th className="px-6 py-3 font-semibold">ID Number</th>
-                          <th className="px-6 py-3 font-semibold">Fingerprint</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {sessionStudents.map((student) => {
-                          const fullName = [
-                            student.first_name,
-                            student.middle_name,
-                            student.last_name,
-                          ]
-                            .filter(Boolean)
-                            .join(" ");
-                          const hasFingerprint = Boolean(student.fingerprint_id);
-
-                          return (
-                            <tr key={student.id_number}>
-                              <td className="px-6 py-3.5 font-semibold text-slate-950">
-                                {fullName}
-                              </td>
-                              <td className="px-6 py-3.5 text-slate-600">
-                                {student.course || "\u2014"}
-                              </td>
-                              <td className="px-6 py-3.5 text-slate-600">
-                                {student.id_number}
-                              </td>
-                              <td className="px-6 py-3.5">
-                                {hasFingerprint ? (
-                                  <span className="inline-block rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                    Enrolled
-                                  </span>
-                                ) : (
-                                  <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                                    Not Enrolled
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-                  <button
-                    type="button"
-                    onClick={closeStudentsList}
-                    className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-
-              {/* Add Students slide panel */}
-              <div className="w-full shrink-0">
-                <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-5">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {selectedAttendance.subject_name}
-                    </p>
-                    <h3 id="add-students-title" className="mt-1 text-xl font-bold text-slate-950">
-                      Add Students
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Choose students to add to this attendance session.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={closeAddStudents}
-                    className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-                    aria-label="Back to students list"
-                  >
-                    Back
-                  </button>
-                </div>
-
-                <div className="border-b border-slate-200 px-6 py-4">
-                  <input
-                    type="search"
-                    value={addStudentsSearchTerm}
-                    onChange={(event) => setAddStudentsSearchTerm(event.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                    placeholder="Search student name, ID, or course"
-                  />
-                </div>
-
-                <div className="max-h-[50vh] overflow-y-auto px-6 py-5">
-                  {isAllStudentsLoading && (
-                    <p className="rounded-lg bg-slate-50 px-4 py-5 text-sm font-medium text-slate-500">
-                      Loading students...
-                    </p>
-                  )}
-
-                  {allStudentsError && (
-                    <p className="rounded-lg bg-rose-50 px-4 py-5 text-sm font-medium text-rose-700">
-                      {allStudentsError}
-                    </p>
-                  )}
-
-                  {!isAllStudentsLoading &&
-                    !allStudentsError &&
-                    filteredAddStudents.length === 0 && (
-                      <p className="rounded-lg bg-slate-50 px-4 py-5 text-sm font-medium text-slate-500">
-                        No students found.
-                      </p>
-                    )}
-
-                  <div className="space-y-2">
-                    {filteredAddStudents.map((student) => {
-                      const fullName = [
-                        student.first_name,
-                        student.middle_name,
-                        student.last_name,
-                      ]
-                        .filter(Boolean)
-                        .join(" ");
-                      const isSelected = selectedAddStudentIds.includes(
-                        student.id_number,
-                      );
-
-                      return (
-                        <label
-                          key={student.id}
-                          className={`flex cursor-pointer items-center gap-3 rounded-lg border p-4 transition ${
-                            isSelected
-                              ? "border-slate-900 bg-slate-50"
-                              : "border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleAddStudent(student.id_number)}
-                            className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                          />
-                          <div>
-                            <p className="font-semibold text-slate-950">{fullName}</p>
-                            <p className="mt-1 text-sm text-slate-500">
-                              {student.id_number} - {student.course}
-                            </p>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-                  <p className="text-sm font-medium text-slate-500">
-                    {selectedAddStudentIds.length} selected
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleAddStudents}
-                    disabled={isAddingStudents}
-                    className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {isAddingStudents ? "Adding..." : "Add Students"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showEditSubject && selectedAttendance && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="edit-subject-title"
-        >
-          <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
-            <div className="border-b border-slate-200 px-6 py-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Attendance details
-              </p>
-              <h3 id="edit-subject-title" className="mt-1 text-xl font-bold text-slate-950">
-                Edit Subject
-              </h3>
-            </div>
-
-            <div className="space-y-4 px-6 py-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Subject name
-                </label>
-                <input
-                  type="text"
-                  value={editSubjectData.subject_name}
-                  onChange={(event) =>
-                    setEditSubjectData((current) => ({
-                      ...current,
-                      subject_name: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Section
-                </label>
-                <input
-                  type="text"
-                  value={editSubjectData.section}
-                  onChange={(event) =>
-                    setEditSubjectData((current) => ({
-                      ...current,
-                      section: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Time
-                </label>
-                <input
-                  type="time"
-                  value={editSubjectData.attendance_time}
-                  onChange={(event) =>
-                    setEditSubjectData((current) => ({
-                      ...current,
-                      attendance_time: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Room
-                </label>
-                <input
-                  type="text"
-                  value={editSubjectData.room}
-                  onChange={(event) =>
-                    setEditSubjectData((current) => ({
-                      ...current,
-                      room: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                  placeholder="Enter room"
-                />
-              </div>
-
-              {editSubjectError && (
-                <p className="rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
-                  {editSubjectError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
-              <button
-                type="button"
-                onClick={() => setShowEditSubject(false)}
-                disabled={isSavingEditSubject}
-                className="flex-1 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleEditSubject}
-                disabled={isSavingEditSubject}
-                className="flex-1 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isSavingEditSubject ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

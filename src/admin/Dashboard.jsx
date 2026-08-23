@@ -3,11 +3,13 @@ import { supabase } from "../supabaseClient";
 import ManageDevice from "./ManageDevice";
 import ManageFaculty from "./ManageFaculty";
 import ManageStudent from "./ManageStudent";
+import ManageStudentDrop from "./ManageStudentDrop";
 
 const menuItems = [
   "dashboard",
   "manage faculty",
   "manage student",
+  "manage student drop",
   "manage fingerprint device",
 ];
 
@@ -20,6 +22,7 @@ function AdminDashboard({ onLogout }) {
   const [requestModalRole, setRequestModalRole] = useState("student");
   const [totalStudents, setTotalStudents] = useState(0);
   const [totalFaculty, setTotalFaculty] = useState(0);
+  const [totalFacultyDevice, setTotalFacultyDevice] = useState(0);
   const [approvedCount, setApprovedCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +38,12 @@ function AdminDashboard({ onLogout }) {
       .select("*", { count: "exact" })
       .limit(0);
 
+    const { count: deviceFacultyCount } = await supabase
+      .from("faculty")
+      .select("*", { count: "exact" })
+      .eq("status_device", "online")
+      .limit(0);
+
     if (studentError || facultyError) {
       setErrorMessage(studentError?.message || facultyError.message);
       return;
@@ -42,6 +51,7 @@ function AdminDashboard({ onLogout }) {
 
     setTotalStudents(studentCount || 0);
     setTotalFaculty(facultyCount || 0);
+    setTotalFacultyDevice(deviceFacultyCount || 0);
     setApprovedCount((studentCount || 0) + (facultyCount || 0));
   };
 
@@ -264,9 +274,9 @@ function AdminDashboard({ onLogout }) {
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-slate-500">Total User of Device</p>
+                  <p className="text-sm font-medium text-slate-500">Total Faculty User of Device</p>
                   <p className="mt-3 text-3xl font-bold text-amber-600">
-                    {totalStudents + totalFaculty}
+                    {totalFacultyDevice}
                   </p>
                 </div>
               </div>
@@ -437,6 +447,8 @@ function AdminDashboard({ onLogout }) {
           {activePage === "manage faculty" && <ManageFaculty />}
 
           {activePage === "manage student" && <ManageStudent />}
+
+          {activePage === "manage student drop" && <ManageStudentDrop />}
 
           {activePage === "manage fingerprint device" && <ManageDevice />}
         </div>

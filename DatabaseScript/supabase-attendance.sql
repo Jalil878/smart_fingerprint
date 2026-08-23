@@ -15,6 +15,7 @@ create table if not exists public.attendance_session_students (
   id uuid primary key default gen_random_uuid(),
   attendance_session_id uuid not null references public.attendance_sessions(id) on delete cascade,
   student_id_number bigint not null references public.students(id_number) on delete cascade,
+  status text default 'active' check (status in ('active', 'warning', 'drop', 'enrolled', 'dropped')),
   created_at timestamp with time zone default now(),
   unique (attendance_session_id, student_id_number)
 );
@@ -23,7 +24,7 @@ alter table public.attendance_sessions enable row level security;
 alter table public.attendance_session_students enable row level security;
 
 grant select, insert, update, delete on public.attendance_sessions to authenticated;
-grant select, insert, delete on public.attendance_session_students to authenticated;
+grant select, insert, update, delete on public.attendance_session_students to authenticated;
 
 drop policy if exists "Faculty can read own attendance sessions" on public.attendance_sessions;
 create policy "Faculty can read own attendance sessions"
@@ -138,6 +139,38 @@ on public.attendance_session_students
 for delete
 to authenticated
 using (
+  exists (
+    select 1
+    from public.attendance_sessions
+    where attendance_sessions.id = attendance_session_students.attendance_session_id
+      and exists (
+        select 1
+        from public.faculty
+        where faculty.id = auth.uid()
+          and faculty.id_number = attendance_sessions.faculty_id_number
+      )
+  )
+);
+
+drop policy if exists "Faculty can update own attendance students" on public.attendance_session_students;
+create policy "Faculty can update own attendance students"
+on public.attendance_session_students
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.attendance_sessions
+    where attendance_sessions.id = attendance_session_students.attendance_session_id
+      and exists (
+        select 1
+        from public.faculty
+        where faculty.id = auth.uid()
+          and faculty.id_number = attendance_sessions.faculty_id_number
+      )
+  )
+)
+with check (
   exists (
     select 1
     from public.attendance_sessions
