@@ -120,19 +120,34 @@ function Login({ onSignIn, onShowSignup }) {
           <div className="p-7 sm:p-9">
             <div className="mb-8">
               <div className="mb-6 flex animate-fade-in-up items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-900 text-lg font-bold text-white">
-                  SF
-                </div>
+                <img
+                  src="it.png"
+                  alt="IT Logo"
+                  className="h-18 w-18 shrink-0 rounded-md object-cover"
+                />
                 <img
                   src="peaci.png"
                   alt="Peaci Logo"
-                  className="h-16 w-auto object-contain"
+                  className="h-18 w-auto object-contain"
+                />
+                <img
+                  src="systemlogo.png"
+                  alt="System Logo"
+                  className="h-19 w-19 shrink-0 object-contain"
                 />
               </div>
-              <h1 className="animate-fade-in-up text-2xl font-bold leading-tight sm:text-xl" style={{ animationDelay: '0.1s' }}>
+              <h1
+                className="animate-fade-in-up text-2xl font-bold leading-tight sm:text-xl"
+                style={{ animationDelay: "0.1s" }}
+              >
                 Smart Fingerprint: Subject Attendance
               </h1>
-              <h2 className="mt-2 animate-fade-in-up text-xl font-bold text-slate-950" style={{ animationDelay: '0.15s' }}>Sign in</h2>
+              <h2
+                className="mt-2 animate-fade-in-up text-xl font-bold text-slate-950"
+                style={{ animationDelay: "0.15s" }}
+              >
+                Sign in
+              </h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -159,7 +174,7 @@ function Login({ onSignIn, onShowSignup }) {
                 ))}
               </div>
 
-              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.25s both' }}>
+              <div style={{ animation: "fade-in-up 0.5s ease-out 0.25s both" }}>
                 <label
                   htmlFor="email"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -177,7 +192,7 @@ function Login({ onSignIn, onShowSignup }) {
                 />
               </div>
 
-              <div style={{ animation: 'fade-in-up 0.5s ease-out 0.35s both' }}>
+              <div style={{ animation: "fade-in-up 0.5s ease-out 0.35s both" }}>
                 <label
                   htmlFor="password"
                   className="mb-2 block text-sm font-medium text-slate-700"
@@ -204,7 +219,10 @@ function Login({ onSignIn, onShowSignup }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4 text-sm" style={{ animation: 'fade-in-up 0.5s ease-out 0.45s both' }}>
+              <div
+                className="flex items-center justify-between gap-4 text-sm"
+                style={{ animation: "fade-in-up 0.5s ease-out 0.45s both" }}
+              >
                 <label className="flex items-center gap-2 text-slate-600">
                   <input
                     type="checkbox"
@@ -224,13 +242,16 @@ function Login({ onSignIn, onShowSignup }) {
                 type="submit"
                 disabled={isLoading}
                 className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
-                style={{ animation: 'fade-in-up 0.5s ease-out 0.55s both' }}
+                style={{ animation: "fade-in-up 0.5s ease-out 0.55s both" }}
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </button>
             </form>
 
-            <p className="mt-6 animate-fade-in-up text-center text-sm text-slate-600" style={{ animationDelay: '0.65s' }}>
+            <p
+              className="mt-6 animate-fade-in-up text-center text-sm text-slate-600"
+              style={{ animationDelay: "0.65s" }}
+            >
               Don't have an account?{" "}
               <button
                 type="button"
