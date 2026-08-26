@@ -42,24 +42,51 @@ function StudentDashboard({ profile, onLogout, onProfileUpdate }) {
   };
 
   const normalizeEnrollmentStatus = (value) => {
-    const v = String(value || "active").toLowerCase().trim();
+    const v = String(value || "").toLowerCase().trim();
+    if (v === "") return "active";
+    if (v === "enrolled") return "enrolled";
+    if (v === "dropped") return "dropped";
     if (v === "warning") return "warning";
-    if (v === "drop" || v === "dropped") return "drop";
-    return "active";
+    if (v === "drop") return "drop";
+    if (v === "active") return "active";
+    return "unknown";
   };
 
   const enrollmentStatusLabel = (value) => {
     const n = normalizeEnrollmentStatus(value);
+    if (n === "enrolled") return "Enrolled";
+    if (n === "dropped") return "Dropped";
     if (n === "warning") return "Warning";
     if (n === "drop") return "Drop";
-    return "Active";
+    if (n === "active") return "Active";
+    return "Unknown";
   };
 
   const enrollmentStatusStyle = (value) => {
     const n = normalizeEnrollmentStatus(value);
-    if (n === "active") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (n === "active" || n === "enrolled") {
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    }
     if (n === "warning") return "bg-amber-50 text-amber-700 border-amber-200";
-    return "bg-rose-50 text-rose-700 border-rose-200";
+    if (n === "drop" || n === "dropped") {
+      return "bg-rose-50 text-rose-700 border-rose-200";
+    }
+    return "bg-slate-100 text-slate-600 border-slate-200";
+  };
+
+  const getEnrollmentStatusValue = (classItem) => {
+    const candidates = [
+      classItem?.enrollment_status,
+      classItem?.status,
+      classItem?.student_status,
+    ];
+
+    const matched = candidates.find((candidate) => {
+      const v = String(candidate || "").toLowerCase().trim();
+      return ["active", "warning", "drop", "dropped", "enrolled"].includes(v);
+    });
+
+    return matched ?? "";
   };
 
   const navItems = [
@@ -151,34 +178,45 @@ function StudentDashboard({ profile, onLogout, onProfileUpdate }) {
                   </p>
                 )}
                 {classes.map((item) => (
-                  <button
-                    key={item.id || `${item.subject_name}-${item.section}-${item.attendance_time}`}
-                    type="button"
-                    onClick={() => {
-                      setSelectedClass(item);
-                      setActivePage("day attendance");
-                    }}
-                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left ring-slate-900 transition hover:bg-slate-50 focus:outline-none focus:ring-2"
-                  >
-                    <div>
+                  (() => {
+                    const enrollmentStatus = getEnrollmentStatusValue(item);
+
+                    return (
+                      <button
+                        key={item.id || `${item.subject_name}-${item.section}-${item.attendance_time}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedClass(item);
+                          setActivePage("day attendance");
+                        }}
+                        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left ring-slate-900 transition hover:bg-slate-50 focus:outline-none focus:ring-2"
+                      >
+                        <div>
                       <h4 className="font-semibold text-slate-950">
-                        {item.subject_name}
+                        {item.course_code
+                          ? `${item.course_code} - ${item.subject_name}`
+                          : item.subject_name}
                       </h4>
                       <p className="mt-1 text-sm text-slate-500">
                         {item.section} &middot; {formatTime(item.attendance_time)}
+                      </p>
+                      <p className="mt-0.5 text-sm text-slate-400">
+                        Academic Year: {item.academic_year || "N/A"}
                       </p>
                       {item.room && (
                         <p className="mt-0.5 text-sm text-slate-400">
                           Room: {item.room}
                         </p>
                       )}
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${enrollmentStatusStyle(item.enrollment_status)}`}
-                    >
-                      {enrollmentStatusLabel(item.enrollment_status)}
-                    </span>
-                  </button>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${enrollmentStatusStyle(enrollmentStatus)}`}
+                        >
+                          {enrollmentStatusLabel(enrollmentStatus)}
+                        </span>
+                      </button>
+                    );
+                  })()
                 ))}
               </div>
             </div>

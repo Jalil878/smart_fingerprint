@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
+const courses = [
+  "BS-Information Technology",
+  "BS-Civil Engineering",
+  "BS-Electrical Engineering",
+  "BS-Social Work",
+  "BS-Nursing",
+  "BS-Accountancy",
+  "BS-Criminology",
+  "BEED-General Education",
+];
+
 function ManageStudent() {
   const [students, setStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -311,13 +322,21 @@ function ManageStudent() {
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Course
                 </label>
-                <input
+                <select
                   name="course"
-                  type="text"
                   required
-                  defaultValue={editingStudent.course}
+                  defaultValue={editingStudent.course || ""}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                />
+                >
+                  <option value="" disabled>
+                    Select course
+                  </option>
+                  {courses.map((course) => (
+                    <option key={course} value={course}>
+                      {course}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">

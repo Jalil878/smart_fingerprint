@@ -6,6 +6,7 @@ function ListStudent({ attendance, onBack, sessionStudents, onAddStudents, onRem
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [sessionDays, setSessionDays] = useState([]);
   const [studentStatuses, setStudentStatuses] = useState({});
+  const [sessionMeta, setSessionMeta] = useState(null);
   const [isStudentDetailLoading, setIsStudentDetailLoading] = useState(false);
   const [studentDetailError, setStudentDetailError] = useState("");
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
@@ -17,7 +18,27 @@ function ListStudent({ attendance, onBack, sessionStudents, onAddStudents, onRem
     }
   }, [sessionStudents]);
 
+  useEffect(() => {
+    const loadSessionMeta = async () => {
+      if (!attendance?.id) {
+        setSessionMeta(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("attendance_sessions")
+        .select("course_code, semester, academic_year")
+        .eq("id", attendance.id)
+        .maybeSingle();
+
+      setSessionMeta(data || null);
+    };
+
+    loadSessionMeta();
+  }, [attendance?.id]);
+
   const students = localSessionStudents.length > 0 ? localSessionStudents : (sessionStudents || []);
+  const resolvedCourseCode = sessionMeta?.course_code || attendance?.course_code;
 
   const fullName = (student) =>
     [student.first_name, student.middle_name, student.last_name]
@@ -250,7 +271,9 @@ function ListStudent({ attendance, onBack, sessionStudents, onAddStudents, onRem
           Students
         </p>
         <h2 className="mt-2 text-3xl font-bold">
-          {attendance?.subject_name}
+          {resolvedCourseCode
+            ? `${resolvedCourseCode} - ${attendance?.subject_name}`
+            : attendance?.subject_name}
         </h2>
         <p className="mt-1 text-sm text-slate-500">
           Section {attendance?.section}
@@ -404,7 +427,7 @@ function ListStudent({ attendance, onBack, sessionStudents, onAddStudents, onRem
           </>
         ) : isDetailOpen ? (
           <>
-            <div className="grid grid-cols-2 gap-3 border-b border-slate-200 px-6 py-4 md:grid-cols-4">
+            <div className="grid grid-cols-3 gap-2 border-b border-slate-200 px-6 py-4 md:gap-3 md:grid-cols-3">
               <div className="rounded-lg bg-emerald-50 px-4 py-3 text-center">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Present</p>
                 <p className="mt-1 text-xl font-bold text-emerald-600">{studentSummary.present}</p>
@@ -416,10 +439,6 @@ function ListStudent({ attendance, onBack, sessionStudents, onAddStudents, onRem
               <div className="rounded-lg bg-rose-50 px-4 py-3 text-center">
                 <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Absent</p>
                 <p className="mt-1 text-xl font-bold text-rose-600">{studentSummary.absent}</p>
-              </div>
-              <div className="rounded-lg bg-slate-100 px-4 py-3 text-center">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">No Record</p>
-                <p className="mt-1 text-xl font-bold text-slate-500">{studentSummary.noRecord}</p>
               </div>
             </div>
 

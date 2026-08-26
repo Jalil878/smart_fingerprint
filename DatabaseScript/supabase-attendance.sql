@@ -3,6 +3,9 @@ create table if not exists public.attendance_sessions (
   faculty_id_number bigint not null references public.faculty(id_number) on delete cascade,
   subject_name text not null,
   section text not null,
+  course_code text,
+  semester text check (semester in ('1st Semester', '2nd Semester', '3rd Semester')),
+  academic_year text,
   attendance_time time not null,
   room text,
   created_at timestamp with time zone default now(),
@@ -210,13 +213,19 @@ using (
   )
 );
 
+drop function if exists public.create_attendance(text, text, time, text, bigint[], integer);
+drop function if exists public.create_attendance(text, text, text, text, text, time, text, bigint[], integer);
+drop function if exists public.create_attendance(text, text, text, text, text, time, text, bigint[]);
+
 create or replace function public.create_attendance(
   p_subject_name text,
   p_section text,
+  p_course_code text,
+  p_semester text,
+  p_academic_year text,
   p_attendance_time time,
   p_room text,
-  p_student_id_numbers bigint[],
-  p_day_number integer default null
+  p_student_id_numbers bigint[]
 )
 returns uuid
 language plpgsql
@@ -226,7 +235,6 @@ as $$
 declare
   v_faculty_id_number bigint;
   v_attendance_session_id uuid;
-  v_day_number integer;
 begin
   select faculty.id_number
   into v_faculty_id_number
@@ -241,19 +249,13 @@ begin
     raise exception 'Please select at least one student.';
   end if;
 
-  if p_day_number is null then
-    select coalesce(max(day), 0) + 1
-    into v_day_number
-    from public.dayattendance
-    where faculty_id_number = v_faculty_id_number;
-  else
-    v_day_number := p_day_number;
-  end if;
-
   insert into public.attendance_sessions (
     faculty_id_number,
     subject_name,
     section,
+    course_code,
+    semester,
+    academic_year,
     attendance_time,
     room
   )
@@ -261,6 +263,9 @@ begin
     v_faculty_id_number,
     p_subject_name,
     p_section,
+    p_course_code,
+    p_semester,
+    p_academic_year,
     p_attendance_time,
     p_room
   )
@@ -286,21 +291,23 @@ begin
     raise exception 'Selected students were not found.';
   end if;
 
-  insert into public.dayattendance (day, attendance_session_id, faculty_id_number)
-  values (v_day_number, v_attendance_session_id, v_faculty_id_number);
-
   return v_attendance_session_id;
 end;
 $$;
 
-revoke all on function public.create_attendance(text, text, time, text, bigint[], integer) from public;
-grant execute on function public.create_attendance(text, text, time, text, bigint[], integer) to authenticated;
+revoke all on function public.create_attendance(text, text, text, text, text, time, text, bigint[]) from public;
+grant execute on function public.create_attendance(text, text, text, text, text, time, text, bigint[]) to authenticated;
+
+drop function if exists public.get_my_attendance_sessions();
 
 create or replace function public.get_my_attendance_sessions()
 returns table (
   id uuid,
   subject_name text,
   section text,
+  course_code text,
+  semester text,
+  academic_year text,
   attendance_time time,
   room text,
   created_at timestamp with time zone,
@@ -328,11 +335,18 @@ begin
     attendance_sessions.id,
     attendance_sessions.subject_name,
     attendance_sessions.section,
+    attendance_sessions.course_code,
+    attendance_sessions.semester,
+    attendance_sessions.academic_year,
     attendance_sessions.attendance_time,
     attendance_sessions.room,
     attendance_sessions.created_at,
     coalesce((select count(*) from public.attendance_session_students where attendance_session_id = attendance_sessions.id), 0)::bigint as total_students,
-    coalesce((select min(day) from public.dayattendance where attendance_session_id = attendance_sessions.id), 0)::integer as day
+    coalesce((
+      select min(dayattendance.day)
+      from public.dayattendance
+      where dayattendance.attendance_session_id = attendance_sessions.id
+    ), 0)::integer as day
   from public.attendance_sessions
   where attendance_sessions.faculty_id_number = v_faculty_id_number
   order by attendance_sessions.created_at desc;

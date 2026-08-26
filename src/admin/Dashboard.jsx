@@ -15,6 +15,7 @@ const menuItems = [
 
 function AdminDashboard({ onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -23,6 +24,7 @@ function AdminDashboard({ onLogout }) {
   const [totalStudents, setTotalStudents] = useState(0);
   const [totalFaculty, setTotalFaculty] = useState(0);
   const [totalFacultyDevice, setTotalFacultyDevice] = useState(0);
+  const [totalDroppedStudents, setTotalDroppedStudents] = useState(0);
   const [approvedCount, setApprovedCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -44,14 +46,26 @@ function AdminDashboard({ onLogout }) {
       .eq("status_device", "online")
       .limit(0);
 
-    if (studentError || facultyError) {
-      setErrorMessage(studentError?.message || facultyError.message);
+    const { count: droppedStudentsCount, error: droppedStudentsError } =
+      await supabase
+        .from("attendance_session_students")
+        .select("*", { count: "exact" })
+        .in("status", ["drop", "dropped"])
+        .limit(0);
+
+    if (studentError || facultyError || droppedStudentsError) {
+      setErrorMessage(
+        studentError?.message ||
+          facultyError?.message ||
+          droppedStudentsError?.message,
+      );
       return;
     }
 
     setTotalStudents(studentCount || 0);
     setTotalFaculty(facultyCount || 0);
     setTotalFacultyDevice(deviceFacultyCount || 0);
+    setTotalDroppedStudents(droppedStudentsCount || 0);
     setApprovedCount((studentCount || 0) + (facultyCount || 0));
   };
 
@@ -184,7 +198,7 @@ function AdminDashboard({ onLogout }) {
 
   return (
     <main className="min-h-screen animate-fade-in bg-slate-100 text-slate-900 md:flex">
-      <aside className="animate-slide-in-left border-b border-slate-800 bg-slate-950 text-white md:sticky md:top-0 md:h-screen md:w-72 md:border-b-0 md:border-r">
+      <aside className="animate-slide-in-left hidden border-b border-slate-800 bg-slate-950 text-white md:sticky md:top-0 md:block md:h-screen md:w-72 md:border-b-0 md:border-r">
         <div className="flex items-center gap-3 px-5 py-5">
           <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white text-sm font-bold text-slate-950">
             SF
@@ -227,6 +241,45 @@ function AdminDashboard({ onLogout }) {
 
       <section className="animate-slide-in-right flex-1 px-5 py-8">
         <div className="mx-auto max-w-6xl">
+          <div className="mb-4 flex items-center justify-between rounded-lg bg-slate-950 px-4 py-3 text-white md:hidden">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="rounded-md border border-slate-700 p-2 text-slate-200 hover:bg-slate-800"
+                aria-label="Open admin menu"
+              >
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                  Smart Fingerprint
+                </p>
+                <p className="text-sm font-bold">Admin Panel</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+            >
+              Logout
+            </button>
+          </div>
+
           {activePage === "dashboard" && (
             <>
               <div className="mb-8">
@@ -258,7 +311,7 @@ function AdminDashboard({ onLogout }) {
                     Students Dropout
                   </p>
                   <p className="mt-3 text-3xl font-bold text-amber-600">
-                    {pendingCount}
+                    {totalDroppedStudents}
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-5 shadow-sm">
@@ -453,6 +506,69 @@ function AdminDashboard({ onLogout }) {
           {activePage === "manage fingerprint device" && <ManageDevice />}
         </div>
       </section>
+
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="absolute inset-0 bg-slate-950/60"
+            aria-label="Close admin menu overlay"
+          />
+
+          <aside className="relative h-full w-72 max-w-[86vw] border-r border-slate-800 bg-slate-950 text-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Smart Fingerprint
+                </p>
+                <h2 className="text-base font-bold">Admin Menu</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-md border border-slate-700 px-2 py-1 text-sm font-semibold text-slate-200 hover:bg-slate-800"
+                aria-label="Close admin menu"
+              >
+                X
+              </button>
+            </div>
+
+            <nav className="space-y-1 px-3 py-4">
+              {menuItems.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => {
+                    setActivePage(item);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full rounded-md px-3 py-2.5 text-left text-sm font-semibold capitalize transition ${
+                    activePage === item
+                      ? "bg-white text-slate-950"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </nav>
+
+            <div className="absolute bottom-0 w-full px-3 pb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onLogout();
+                }}
+                className="w-full rounded-md border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800"
+              >
+                Logout
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {isRequestModalOpen && (
         <div

@@ -39,7 +39,46 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
         return;
       }
 
-      setAttendanceSessions(data || []);
+      const sessions = data || [];
+
+      if (sessions.length === 0) {
+        setAttendanceSessions([]);
+        return;
+      }
+
+      const sessionIds = sessions.map((item) => item.id).filter(Boolean);
+      const shouldLoadMetadata = sessions.some(
+        (item) =>
+          item.course_code === undefined ||
+          item.semester === undefined ||
+          item.academic_year === undefined,
+      );
+
+      if (!shouldLoadMetadata || sessionIds.length === 0) {
+        setAttendanceSessions(sessions);
+        return;
+      }
+
+      const { data: sessionMetadata, error: metadataError } = await supabase
+        .from("attendance_sessions")
+        .select("id, course_code, semester, academic_year")
+        .in("id", sessionIds);
+
+      if (metadataError || !sessionMetadata) {
+        setAttendanceSessions(sessions);
+        return;
+      }
+
+      const metadataById = Object.fromEntries(
+        sessionMetadata.map((item) => [item.id, item]),
+      );
+
+      setAttendanceSessions(
+        sessions.map((item) => ({
+          ...item,
+          ...metadataById[item.id],
+        })),
+      );
     };
 
     loadAttendanceSessions();
@@ -87,6 +126,11 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
   const [editSubjectData, setEditSubjectData] = useState({
     subject_name: "",
     section: "",
+    course_code: "",
+    semester: "",
+    academic_year: "",
+    start_academic_year: "",
+    end_academic_year: "",
     attendance_time: "",
     room: "",
   });
@@ -224,9 +268,19 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
   const openEditSubject = () => {
     if (!selectedAttendance) return;
 
+    const academicYearValue = selectedAttendance.academic_year || "";
+    const [startAcademicYear = "", endAcademicYear = ""] = academicYearValue
+      .split("-")
+      .map((value) => value.trim());
+
     setEditSubjectData({
       subject_name: selectedAttendance.subject_name,
       section: selectedAttendance.section,
+      course_code: selectedAttendance.course_code || "",
+      semester: selectedAttendance.semester || "",
+      academic_year: academicYearValue,
+      start_academic_year: startAcademicYear,
+      end_academic_year: endAcademicYear,
       attendance_time: selectedAttendance.attendance_time,
       room: selectedAttendance.room || "",
     });
@@ -239,7 +293,12 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
 
     const subjectName = editSubjectData.subject_name.trim();
     const section = editSubjectData.section.trim();
+    const courseCode = editSubjectData.course_code.trim();
+    const semester = editSubjectData.semester.trim();
+    const startAcademicYear = editSubjectData.start_academic_year.trim();
+    const endAcademicYear = editSubjectData.end_academic_year.trim();
     const attendanceTime = editSubjectData.attendance_time;
+    const academicYear = `${startAcademicYear}-${endAcademicYear}`;
 
     if (!subjectName) {
       setEditSubjectError("Please enter the subject name.");
@@ -248,6 +307,26 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
 
     if (!section) {
       setEditSubjectError("Please enter the section.");
+      return;
+    }
+
+    if (!semester) {
+      setEditSubjectError("Please enter the semester.");
+      return;
+    }
+
+    if (!startAcademicYear) {
+      setEditSubjectError("Please enter the start year.");
+      return;
+    }
+
+    if (!endAcademicYear) {
+      setEditSubjectError("Please enter the end year.");
+      return;
+    }
+
+    if (Number(endAcademicYear) <= Number(startAcademicYear)) {
+      setEditSubjectError("End year must be greater than start year.");
       return;
     }
 
@@ -263,6 +342,9 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
       p_session_id: selectedAttendance.id,
       p_subject_name: subjectName,
       p_section: section,
+      p_course_code: courseCode || null,
+      p_semester: semester,
+      p_academic_year: academicYear,
       p_attendance_time: attendanceTime,
       p_room: editSubjectData.room.trim() || null,
     });
@@ -278,6 +360,9 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
       ...selectedAttendance,
       subject_name: subjectName,
       section: section,
+      course_code: courseCode,
+      semester: semester,
+      academic_year: academicYear,
       attendance_time: attendanceTime,
       room: editSubjectData.room.trim() || null,
     };
@@ -398,12 +483,21 @@ function FacultyDashboard({ profile, onLogout, onProfileUpdate }) {
                   >
                     <div>
                       <h4 className="font-semibold text-slate-950">
-                        {item.subject_name}
+                        {item.course_code
+                          ? `${item.course_code} - ${item.subject_name}`
+                          : item.subject_name}
                       </h4>
                       <p className="mt-1 text-sm text-slate-500">
                         {item.section} - {formatTime(item.attendance_time)}
                         {item.room ? ` - ${item.room}` : ""}
                       </p>
+                      {(item.semester || item.academic_year) && (
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {item.semester || ""}
+                          {item.semester && item.academic_year ? " - " : ""}
+                          {item.academic_year || ""}
+                        </p>
+                      )}
                     </div>
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

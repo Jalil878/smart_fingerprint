@@ -14,10 +14,11 @@ function ManageStudentDrop() {
       setIsLoading(true);
 
       const { data, error } = await supabase
-        .from("students")
+        .from("attendance_session_students")
         .select(
-          "id, first_name, middle_name, last_name, id_number, course, email, status, created_at",
+          "id, attendance_session_id, student_id_number, status, students!inner(id_number, first_name, middle_name, last_name, course, email), attendance_sessions!inner(subject_name, section, course_code, semester, academic_year)",
         )
+        .in("status", ["drop", "dropped"])
         .order("created_at", { ascending: false });
 
       setIsLoading(false);
@@ -27,20 +28,37 @@ function ManageStudentDrop() {
         return;
       }
 
-      setStudents(data || []);
+      setStudents(
+        (data || []).map((item) => {
+          const studentData = Array.isArray(item.students)
+            ? item.students[0]
+            : item.students;
+          const sessionData = Array.isArray(item.attendance_sessions)
+            ? item.attendance_sessions[0]
+            : item.attendance_sessions;
+
+          return {
+            id: item.id,
+            status: item.status,
+            attendance_session_id: item.attendance_session_id,
+            student_id_number: item.student_id_number,
+            student: studentData,
+            session: sessionData,
+          };
+        }),
+      );
     };
 
     loadStudents();
   }, []);
 
   const toggleDrop = async (student) => {
-    const nextStatus =
-      student.status === "dropped" ? "active" : "dropped";
-    const actionLabel = nextStatus === "dropped" ? "Drop" : "Restore";
+    const nextStatus = "active";
+    const actionLabel = "Restore";
     const fullName = [
-      student.first_name,
-      student.middle_name,
-      student.last_name,
+      student.student?.first_name,
+      student.student?.middle_name,
+      student.student?.last_name,
     ]
       .filter(Boolean)
       .join(" ");
@@ -53,8 +71,8 @@ function ManageStudentDrop() {
     setBusyId(student.id);
 
     const { error } = await supabase
-      .from("students")
-      .update({ status: nextStatus, updated_at: new Date().toISOString() })
+      .from("attendance_session_students")
+      .update({ status: nextStatus })
       .eq("id", student.id);
 
     setBusyId(null);
@@ -65,11 +83,7 @@ function ManageStudentDrop() {
     }
 
     setStudents((currentStudents) =>
-      currentStudents.map((currentStudent) =>
-        currentStudent.id === student.id
-          ? { ...currentStudent, status: nextStatus }
-          : currentStudent,
-      ),
+      currentStudents.filter((currentStudent) => currentStudent.id !== student.id),
     );
   };
 
@@ -77,12 +91,17 @@ function ManageStudentDrop() {
   const filteredStudents = normalizedSearchTerm
     ? students.filter((student) => {
         const searchableText = [
-          student.first_name,
-          student.middle_name,
-          student.last_name,
-          student.id_number,
-          student.course,
-          student.email,
+          student.student?.first_name,
+          student.student?.middle_name,
+          student.student?.last_name,
+          student.student?.id_number,
+          student.student_id_number,
+          student.student?.course,
+          student.student?.email,
+          student.session?.course_code,
+          student.session?.subject_name,
+          student.session?.section,
+          student.session?.academic_year,
         ]
           .filter(Boolean)
           .join(" ")
@@ -102,9 +121,9 @@ function ManageStudentDrop() {
       <div className="mt-8 overflow-hidden rounded-lg bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-lg font-bold text-slate-950">Students</h3>
+            <h3 className="text-lg font-bold text-slate-950">Dropped Students</h3>
             <p className="mt-1 text-sm text-slate-500">
-              Mark students as dropped out or restore them to active.
+              View all dropped students and restore them to active.
             </p>
           </div>
 
@@ -113,7 +132,7 @@ function ManageStudentDrop() {
             <input
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
               type="search"
-              placeholder="Search students"
+              placeholder="Search students or ID number"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
             />
@@ -121,13 +140,15 @@ function ManageStudentDrop() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-5 py-3 font-semibold">Name</th>
                 <th className="px-5 py-3 font-semibold">ID Number</th>
                 <th className="px-5 py-3 font-semibold">Course</th>
-                <th className="px-5 py-3 font-semibold">Email</th>
+                <th className="px-5 py-3 font-semibold">Session</th>
+                <th className="px-5 py-3 font-semibold">Semester</th>
+                <th className="px-5 py-3 font-semibold">Academic Year</th>
                 <th className="px-5 py-3 font-semibold">Status</th>
                 <th className="px-5 py-3 font-semibold">Action</th>
               </tr>
@@ -135,13 +156,18 @@ function ManageStudentDrop() {
             <tbody className="divide-y divide-slate-200">
               {filteredStudents.map((student) => {
                 const fullName = [
-                  student.first_name,
-                  student.middle_name,
-                  student.last_name,
+                  student.student?.first_name,
+                  student.student?.middle_name,
+                  student.student?.last_name,
                 ]
                   .filter(Boolean)
                   .join(" ");
-                const isDropped = student.status === "dropped";
+                const normalizedStatus = String(student.status || "").toLowerCase();
+                const isDropped =
+                  normalizedStatus === "drop" || normalizedStatus === "dropped";
+                const sessionLabel = student.session?.course_code
+                  ? `${student.session.course_code} - ${student.session.subject_name}`
+                  : student.session?.subject_name || "N/A";
 
                 return (
                   <tr key={student.id}>
@@ -149,13 +175,19 @@ function ManageStudentDrop() {
                       {fullName}
                     </td>
                     <td className="px-5 py-4 text-slate-700">
-                      {student.id_number}
+                      {student.student?.id_number || student.student_id_number}
                     </td>
                     <td className="px-5 py-4 text-slate-700">
-                      {student.course}
+                      {student.student?.course || "N/A"}
                     </td>
                     <td className="px-5 py-4 text-slate-700">
-                      {student.email}
+                      {sessionLabel}
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">
+                      {student.session?.semester || "N/A"}
+                    </td>
+                    <td className="px-5 py-4 text-slate-700">
+                      {student.session?.academic_year || "N/A"}
                     </td>
                     <td className="px-5 py-4">
                       <span
@@ -201,7 +233,7 @@ function ManageStudentDrop() {
 
         {!isLoading && students.length === 0 && (
           <p className="px-5 py-6 text-sm font-medium text-slate-500">
-            No students yet.
+            No dropped students yet.
           </p>
         )}
 

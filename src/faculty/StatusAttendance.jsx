@@ -18,6 +18,7 @@ function StatusAttendance({
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sessionStudents, setSessionStudents] = useState([]);
+  const [sessionMeta, setSessionMeta] = useState(null);
   const [deviceUrl, setDeviceUrl] = useState("");
   const [scanStatus, setScanStatus] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -146,6 +147,13 @@ function StatusAttendance({
         p_session_id: attendance.id,
       });
       if (countData !== null) setTotalStudents(countData);
+
+      const { data: metaData } = await supabase
+        .from("attendance_sessions")
+        .select("course_code, semester, academic_year")
+        .eq("id", attendance.id)
+        .maybeSingle();
+      setSessionMeta(metaData || null);
 
       const statusByIdNumber = new Map(
         (mergedRecords || []).map((record) => [
@@ -424,6 +432,10 @@ function StatusAttendance({
           ? records.filter((r) => r.status === "absent").map(recordToStudent)
           : sessionStudents;
 
+  const resolvedCourseCode = sessionMeta?.course_code || attendance.course_code;
+  const resolvedAcademicYear =
+    sessionMeta?.academic_year || attendance.academic_year;
+
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
@@ -441,7 +453,11 @@ function StatusAttendance({
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Day {day} Attendance
         </p>
-        <h2 className="mt-2 text-3xl font-bold">{attendance.subject_name}</h2>
+        <h2 className="mt-2 text-3xl font-bold">
+          {resolvedCourseCode
+            ? `${resolvedCourseCode} - ${attendance.subject_name}`
+            : attendance.subject_name}
+        </h2>
       </div>
 
       {scanStatus && (
@@ -456,7 +472,7 @@ function StatusAttendance({
         </div>
       )}
 
-      <div className="mb-6 grid gap-4 rounded-lg bg-white p-6 shadow-sm md:grid-cols-4">
+      <div className="mb-6 grid gap-4 rounded-lg bg-white p-6 shadow-sm md:grid-cols-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Section</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{attendance.section}</p>
@@ -468,6 +484,10 @@ function StatusAttendance({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Room</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{attendance.room || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Academic Year</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{resolvedAcademicYear || "N/A"}</p>
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Students</p>
@@ -561,7 +581,85 @@ function StatusAttendance({
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="md:hidden">
+          {isLoading && (
+            <p className="px-5 py-6 text-center text-sm font-medium text-slate-500">
+              Loading students...
+            </p>
+          )}
+
+          {!isLoading && displayedStudents.length === 0 && (
+            <p className="px-5 py-6 text-center text-sm font-medium text-slate-500">
+              No {statusFilter === "all" ? "" : `${statusFilter} `}
+              students found.
+            </p>
+          )}
+
+          {!isLoading && displayedStudents.length > 0 && (
+            <div className="space-y-3 p-4">
+              {displayedStudents.map((student) => {
+                const fullName = [
+                  student.first_name,
+                  student.middle_name,
+                  student.last_name,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                const hasFingerprint = Boolean(student.fingerprint_id);
+
+                return (
+                  <article
+                    key={student.id_number}
+                    className="rounded-lg border border-slate-200 bg-white p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-950">{fullName}</p>
+                        <p className="mt-2 text-sm text-slate-600">
+                          {student.course || "\u2014"}
+                        </p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className="text-sm text-slate-600">{student.id_number}</p>
+                          {hasFingerprint ? (
+                            <span className="inline-block rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                              Enrolled
+                            </span>
+                          ) : (
+                            <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                              Not Enrolled
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 text-right">
+                        {student.status ? (
+                          <span
+                            className={`inline-block rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
+                              student.status === "present"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : student.status === "late"
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-rose-50 text-rose-700"
+                            }`}
+                          >
+                            {student.status}
+                          </span>
+                        ) : (
+                          <span className="inline-block rounded-md bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                            No record
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[600px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>

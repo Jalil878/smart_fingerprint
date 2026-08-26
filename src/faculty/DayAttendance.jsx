@@ -5,6 +5,7 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
   const [dayTotals, setDayTotals] = useState([]);
   const [days, setDays] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
+  const [sessionMeta, setSessionMeta] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, setError] = useState("");
   const formatTime = (time) => {
@@ -28,9 +29,16 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
           supabase.rpc("get_session_day_totals", { p_session_id: attendance.id }),
         ]);
 
+      const { data: metaData } = await supabase
+        .from("attendance_sessions")
+        .select("course_code, semester, academic_year")
+        .eq("id", attendance.id)
+        .maybeSingle();
+
       if (daysData) setDays(daysData || []);
       if (countData !== null) setTotalStudents(countData);
       if (totalsData) setDayTotals(totalsData || []);
+      setSessionMeta(metaData || null);
 
       setIsLoading(false);
     };
@@ -46,6 +54,10 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
       absent: totals.absent || 0,
     };
   };
+
+  const resolvedCourseCode = sessionMeta?.course_code || attendance.course_code;
+  const resolvedAcademicYear =
+    sessionMeta?.academic_year || attendance.academic_year;
 
   return (
     <div className="animate-fade-in">
@@ -64,10 +76,14 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Attendance Details
         </p>
-        <h2 className="mt-2 text-3xl font-bold">{attendance.subject_name}</h2>
+        <h2 className="mt-2 text-3xl font-bold">
+          {resolvedCourseCode
+            ? `${resolvedCourseCode} - ${attendance.subject_name}`
+            : attendance.subject_name}
+        </h2>
       </div>
 
-      <div className="mb-6 grid gap-4 rounded-lg bg-white p-6 shadow-sm md:grid-cols-4">
+      <div className="mb-6 grid gap-4 rounded-lg bg-white p-6 shadow-sm md:grid-cols-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Section</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{attendance.section}</p>
@@ -79,6 +95,10 @@ function DayAttendance({ attendance, onBack, dayRefreshKey, onSelectDay }) {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Room</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{attendance.room || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Academic Year</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{resolvedAcademicYear || "N/A"}</p>
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Students</p>

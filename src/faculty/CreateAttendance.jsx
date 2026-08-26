@@ -73,7 +73,11 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
 
     const formData = new FormData(event.currentTarget);
     const subjectName = formData.get("subjectName")?.trim();
+    const courseCode = formData.get("courseCode")?.trim();
     const section = formData.get("section")?.trim();
+    const semester = formData.get("semester")?.trim();
+    const startAcademicYear = formData.get("startAcademicYear")?.trim();
+    const endAcademicYear = formData.get("endAcademicYear")?.trim();
     const attendanceTime = formData.get("attendanceTime");
     const room = formData.get("room")?.trim();
 
@@ -84,6 +88,26 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
 
     if (!section) {
       setErrorMessage("Please enter the section.");
+      return;
+    }
+
+    if (!semester) {
+      setErrorMessage("Please enter the semester.");
+      return;
+    }
+
+    if (!startAcademicYear) {
+      setErrorMessage("Please enter the start year.");
+      return;
+    }
+
+    if (!endAcademicYear) {
+      setErrorMessage("Please enter the end year.");
+      return;
+    }
+
+    if (Number(endAcademicYear) <= Number(startAcademicYear)) {
+      setErrorMessage("End year must be greater than start year.");
       return;
     }
 
@@ -99,7 +123,12 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
 
     setPendingAttendance({
       subjectName,
+      courseCode,
       section,
+      semester,
+      academicYear: `${startAcademicYear}-${endAcademicYear}`,
+      startAcademicYear,
+      endAcademicYear,
       attendanceTime,
       room,
       studentIdNumbers: [...selectedStudentIdNumbers],
@@ -122,6 +151,9 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
       {
         p_subject_name: pendingAttendance.subjectName,
         p_section: pendingAttendance.section,
+        p_course_code: pendingAttendance.courseCode || null,
+        p_semester: pendingAttendance.semester,
+        p_academic_year: pendingAttendance.academicYear,
         p_attendance_time: pendingAttendance.attendanceTime,
         p_room: pendingAttendance.room || null,
         p_student_id_numbers: pendingAttendance.studentIdNumbers,
@@ -139,7 +171,12 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
     setLastCreatedAttendance({
       id: attendanceId,
       subjectName: pendingAttendance.subjectName,
+      courseCode: pendingAttendance.courseCode,
       section: pendingAttendance.section,
+      semester: pendingAttendance.semester,
+      academicYear: pendingAttendance.academicYear,
+      startAcademicYear: pendingAttendance.startAcademicYear,
+      endAcademicYear: pendingAttendance.endAcademicYear,
       attendanceTime: pendingAttendance.attendanceTime,
       room: pendingAttendance.room,
       studentCount: pendingAttendance.studentIdNumbers.length,
@@ -150,7 +187,10 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
     onSaved?.({
       id: attendanceId,
       subject_name: pendingAttendance.subjectName,
+      course_code: pendingAttendance.courseCode,
       section: pendingAttendance.section,
+      semester: pendingAttendance.semester,
+      academic_year: pendingAttendance.academicYear,
       attendance_time: pendingAttendance.attendanceTime,
       room: pendingAttendance.room,
       created_at: new Date().toISOString(),
@@ -196,6 +236,20 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
             <p>
               <span className="font-semibold">Section:</span>{" "}
               {lastCreatedAttendance.section}
+            </p>
+            {lastCreatedAttendance.courseCode && (
+              <p>
+                <span className="font-semibold">Course code:</span>{" "}
+                {lastCreatedAttendance.courseCode}
+              </p>
+            )}
+            <p>
+              <span className="font-semibold">Semester:</span>{" "}
+              {lastCreatedAttendance.semester}
+            </p>
+            <p>
+              <span className="font-semibold">Academic year:</span>{" "}
+              {lastCreatedAttendance.academicYear}
             </p>
             <p>
               <span className="font-semibold">Time:</span>{" "}
@@ -247,6 +301,60 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
             className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
             placeholder="Enter section"
           />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Course code
+          </label>
+          <input
+            name="courseCode"
+            type="text"
+            className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+            placeholder="Enter course code"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Semester
+          </label>
+          <select
+            name="semester"
+            className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+            defaultValue=""
+          >
+            <option value="" disabled>
+              Select semester
+            </option>
+            <option value="1st Semester">1st Semester</option>
+            <option value="2nd Semester">2nd Semester</option>
+            <option value="3rd Semester">3rd Semester</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Academic year
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              name="startAcademicYear"
+              type="number"
+              min="2000"
+              max="2100"
+              className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              placeholder="Start year"
+            />
+            <input
+              name="endAcademicYear"
+              type="number"
+              min="2000"
+              max="2101"
+              className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              placeholder="End year"
+            />
+          </div>
         </div>
 
         <div>
@@ -340,6 +448,24 @@ function CreateAttendance({ onGoToDashboard, onSaved }) {
               <p>
                 <span className="font-semibold text-slate-900">Section:</span>{" "}
                 {pendingAttendance.section}
+              </p>
+              {pendingAttendance.courseCode && (
+                <p>
+                  <span className="font-semibold text-slate-900">
+                    Course code:
+                  </span>{" "}
+                  {pendingAttendance.courseCode}
+                </p>
+              )}
+              <p>
+                <span className="font-semibold text-slate-900">Semester:</span>{" "}
+                {pendingAttendance.semester}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-900">
+                  Academic year:
+                </span>{" "}
+                {pendingAttendance.academicYear}
               </p>
               <p>
                 <span className="font-semibold text-slate-900">Time:</span>{" "}

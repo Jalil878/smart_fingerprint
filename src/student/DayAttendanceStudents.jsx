@@ -50,6 +50,16 @@ function DayAttendanceStudents({ classItem, onBack }) {
     return "bg-rose-50 text-rose-700";
   };
 
+  const attendanceTotals = records.reduce(
+    (totals, record) => {
+      if (record.status === "present") totals.present += 1;
+      else if (record.status === "late") totals.late += 1;
+      else if (record.status === "absent") totals.absent += 1;
+      return totals;
+    },
+    { present: 0, late: 0, absent: 0 },
+  );
+
   return (
     <div className="animate-fade-in">
       <div className="mb-6">
@@ -67,10 +77,14 @@ function DayAttendanceStudents({ classItem, onBack }) {
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           My Attendance
         </p>
-        <h2 className="mt-2 text-3xl font-bold">{classItem.subject_name}</h2>
+        <h2 className="mt-2 text-3xl font-bold">
+          {classItem.course_code
+            ? `${classItem.course_code} - ${classItem.subject_name}`
+            : classItem.subject_name}
+        </h2>
       </div>
 
-      <div className="mb-6 grid gap-4 rounded-lg bg-white p-6 shadow-sm md:grid-cols-3">
+      <div className="mb-6 grid gap-4 rounded-lg bg-white p-6 shadow-sm md:grid-cols-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Section</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{classItem.section}</p>
@@ -82,6 +96,25 @@ function DayAttendanceStudents({ classItem, onBack }) {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Room</p>
           <p className="mt-1 text-lg font-bold text-slate-900">{classItem.room || "N/A"}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Academic Year</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">{classItem.academic_year || "N/A"}</p>
+        </div>
+      </div>
+
+      <div className="mb-6 grid grid-cols-3 gap-2 rounded-lg bg-white p-4 shadow-sm md:gap-4 md:p-6">
+        <div className="rounded-lg bg-emerald-50 px-4 py-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Present</p>
+          <p className="mt-1 text-xl font-bold text-emerald-600">{attendanceTotals.present}</p>
+        </div>
+        <div className="rounded-lg bg-amber-50 px-4 py-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Late</p>
+          <p className="mt-1 text-xl font-bold text-amber-600">{attendanceTotals.late}</p>
+        </div>
+        <div className="rounded-lg bg-rose-50 px-4 py-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Absent</p>
+          <p className="mt-1 text-xl font-bold text-rose-600">{attendanceTotals.absent}</p>
         </div>
       </div>
 

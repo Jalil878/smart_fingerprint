@@ -21,7 +21,11 @@ function EditSubject({ attendance, onBack, editSubjectData, setEditSubjectData, 
 
       <div className="rounded-lg bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
-          <h3 className="text-lg font-bold">{attendance?.subject_name}</h3>
+          <h3 className="text-lg font-bold">
+            {attendance?.course_code
+              ? `${attendance.course_code} - ${attendance.subject_name}`
+              : attendance?.subject_name}
+          </h3>
         </div>
 
         <div className="space-y-4 px-6 py-5">
@@ -57,6 +61,83 @@ function EditSubject({ attendance, onBack, editSubjectData, setEditSubjectData, 
               }
               className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
             />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Course code
+            </label>
+            <input
+              type="text"
+              value={editSubjectData.course_code}
+              onChange={(event) =>
+                setEditSubjectData((current) => ({
+                  ...current,
+                  course_code: event.target.value,
+                }))
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              placeholder="Enter course code"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Semester
+            </label>
+            <select
+              value={editSubjectData.semester}
+              onChange={(event) =>
+                setEditSubjectData((current) => ({
+                  ...current,
+                  semester: event.target.value,
+                }))
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+            >
+              <option value="" disabled>
+                Select semester
+              </option>
+              <option value="1st Semester">1st Semester</option>
+              <option value="2nd Semester">2nd Semester</option>
+              <option value="3rd Semester">3rd Semester</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Academic year
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                value={editSubjectData.start_academic_year}
+                onChange={(event) =>
+                  setEditSubjectData((current) => ({
+                    ...current,
+                    start_academic_year: event.target.value,
+                  }))
+                }
+                className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                placeholder="Start year"
+              />
+              <input
+                type="number"
+                min="2000"
+                max="2101"
+                value={editSubjectData.end_academic_year}
+                onChange={(event) =>
+                  setEditSubjectData((current) => ({
+                    ...current,
+                    end_academic_year: event.target.value,
+                  }))
+                }
+                className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                placeholder="End year"
+              />
+            </div>
           </div>
 
           <div>
